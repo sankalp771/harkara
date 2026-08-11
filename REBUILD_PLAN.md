@@ -1,4 +1,4 @@
-# LAWL Rebuild Plan
+# Harkara Rebuild Plan
 
 Companion to `SEMANTICS.md`. Every phase lists: the clauses it implements,
 the tests that prove them, and the explain-back gate. A phase is DONE when
@@ -19,9 +19,9 @@ let it implement against the pre-written tests. New ideas mid-session go to
 ## Phase 0 — Scaffolding (half a day)
 
 No product code. Skeleton only:
-- TypeScript strict, single package `lawl`, `src/` + `test/`
+- TypeScript strict, single package `harkara`, `src/` + `test/`
 - vitest + testcontainers (or docker-compose Postgres) for integration tests
-- `node-pg-migrate` wired: `lawl` never runs raw schema.sql at boot
+- `node-pg-migrate` wired: `harkara` never runs raw schema.sql at boot
 - GitHub Actions CI: lint, typecheck, migrate, full test suite vs real
   Postgres service container. CI red = nothing merges. This is the
   foundation everything else stands on.
@@ -49,7 +49,7 @@ Gate: explain why the partial index exists and what bug the old repo had.
 
 ## Phase 2 — Send API (§1.1–1.3, §2.1)
 
-`lawl.send(event, { tx? })` — the transactional outbox headline feature:
+`harkara.send(event, { tx? })` — the transactional outbox headline feature:
 when a caller passes their own transaction/client, the message insert joins
 their COMMIT. Acknowledge only after commit. Message id generated here,
 stable forever (§2.1).
@@ -58,7 +58,7 @@ Tests: send inside a rolled-back tx → no message exists; send without tx →
 persisted before the promise resolves; fan-out creates one delivery per
 matching endpoint in the same tx.
 
-Gate: explain the crash window that 202-before-persist created in old LAWL
+Gate: explain the crash window that 202-before-persist created in old Harkara
 and why persist-then-ack closes it.
 
 ## Phase 3 — Worker loop + crash recovery (§5.1, §8)
@@ -84,7 +84,7 @@ the old repo had.
 Headers, `{id}.{timestamp}.{payload}` signed content, `v1,` + base64,
 `whsec_` secrets, multi-secret signing for rotation windows.
 
-Tests: **verify LAWL's output with the official `standard-webhooks` npm
+Tests: **verify Harkara's output with the official `standard-webhooks` npm
 library** — the spec's own reference verifier is the oracle, not our own
 code. Rotation test: two active secrets → two signatures in header → old
 verifier and new verifier both accept. Tampered timestamp header → official
@@ -116,7 +116,7 @@ Tests: breaker opens on rate not backlog; exactly one probe in half-open;
 probe success closes and drains; probe failure doubles cooldown; suspended
 messages don't burn retry budget.
 
-Gate: explain the livelock in old LAWL's breaker and why half-open is
+Gate: explain the livelock in old Harkara's breaker and why half-open is
 mandatory.
 
 ## Phase 7 — SSRF guard (§9)

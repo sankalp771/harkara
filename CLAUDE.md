@@ -1,6 +1,6 @@
-# CLAUDE.md — LAWL
+# CLAUDE.md — Harkara
 
-You are working on LAWL, an embeddable webhook delivery library for
+You are working on Harkara, an embeddable webhook delivery library for
 Node/TypeScript apps using their existing Postgres. Library, not service:
 no Redis, no broker, no separate dispatcher. "The Sidekiq of webhooks."
 

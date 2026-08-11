@@ -1,6 +1,6 @@
-# LAWL — Delivery Semantics
+# Harkara — Delivery Semantics
 
-This document is LAWL's contract. It states exactly what the library promises,
+This document is Harkara's contract. It states exactly what the library promises,
 what it explicitly does not promise, and what receivers must do on their side.
 Every test in the correctness suite traces back to a numbered clause here.
 If the code and this document disagree, the code is wrong.
@@ -13,7 +13,7 @@ If the code and this document disagree, the code is wrong.
 **at least once**, or will end in the dead letter queue after the retry
 schedule is exhausted. Silent loss is a bug of the highest severity.
 
-**1.2** LAWL does NOT promise exactly-once delivery. No networked system can:
+**1.2** Harkara does NOT promise exactly-once delivery. No networked system can:
 a worker may crash after the receiver processes a request but before the
 success is recorded, and the only safe recovery is to send again.
 Duplicates are therefore **expected, rare, and harmless by contract** (see §2).
@@ -34,7 +34,7 @@ same id.
 ids; on a duplicate, skip processing and still return 2xx.
 
 **2.3** Sender guarantees ≥1 delivery; receiver collapses N deliveries to 1
-processing. Together: effectively-once. LAWL's docs ship a copy-paste
+processing. Together: effectively-once. Harkara's docs ship a copy-paste
 dedup example for this reason.
 
 ## 3. Retry schedule
@@ -73,13 +73,13 @@ without the secret.
 
 **4.4** Receivers SHOULD reject messages whose timestamp is outside a
 tolerance window (recommended ±5 minutes) and MUST verify using the raw
-body bytes and a constant-time comparison. LAWL's docs point to the
+body bytes and a constant-time comparison. Harkara's docs point to the
 official Standard Webhooks verification libraries rather than shipping
 a proprietary scheme.
 
 **4.5** Secrets use the `whsec_` prefix (secret-scanner friendly). An
 endpoint may have multiple active secrets simultaneously; during rotation
-LAWL signs with all active secrets and sends the signatures
+Harkara signs with all active secrets and sends the signatures
 space-separated in one header. Receivers accept if ANY signature matches.
 Rotation is therefore zero-downtime by construction.
 
@@ -137,7 +137,7 @@ both documented rather than hidden:
 
 **7.3** Receivers that require strict ordering should order on a field
 inside the payload (e.g. a sequence number), not on arrival order.
-LAWL documents this pattern.
+Harkara documents this pattern.
 
 ## 8. Crash recovery
 
@@ -154,8 +154,8 @@ loss.
 
 ## 9. Egress safety (SSRF)
 
-**9.1** Endpoint URLs are untrusted user input pointed at LAWL's own
-outbound HTTP client. Before any attempt, LAWL resolves the hostname and
+**9.1** Endpoint URLs are untrusted user input pointed at Harkara's own
+outbound HTTP client. Before any attempt, Harkara resolves the hostname and
 rejects targets in private, loopback, and link-local ranges (including
 cloud metadata addresses).
 
@@ -169,7 +169,7 @@ intended for local development.
 
 ## 10. Non-goals
 
-LAWL is a library, not a service. It will not ship: a hosted offering, a
+Harkara is a library, not a service. It will not ship: a hosted offering, a
 separate dispatcher service, a required Redis/broker, multi-region
 delivery, or enterprise SLAs. Teams that need those should use Svix,
-Hookdeck Outpost, or Convoy — and LAWL's docs say so plainly.
+Hookdeck Outpost, or Convoy — and Harkara's docs say so plainly.
