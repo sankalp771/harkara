@@ -153,3 +153,33 @@ at-least-once is an honest, launchable contract.
 Keep a one-line-per-session log here: date, phase, what merged, what got
 kicked to BACKLOG.md. This becomes the build-in-public thread almost
 verbatim.
+
+### 2026-08-11 — pre-phase-0: spec review amendments
+
+Agent reviewed the contract, flagged five holes, touched nothing;
+maintainer ruled on each. Four of five were drafting bugs in the spec.
+
+1. **§1.3 spoke of HTTP 202 acks** — leftover from service-shaped
+   thinking; Harkara is a library with no HTTP API. Ruling: fixed —
+   `send()`'s promise resolves only after commit; with a caller tx,
+   acceptance is the caller's own COMMIT.
+2. **"Matching endpoint" was never defined** anywhere, yet Phase 1
+   freezes the schema. Ruling: fixed, new §1a — event-type patterns with
+   dot-segment globs, empty list = all events, **send-time binding**
+   (late-binding to new endpoints explicitly rejected for v1; replay is
+   the tool for backfill).
+3. **Plain `send()` retry mints a fresh webhook-id**, defeating receiver
+   dedup — §2.3's "effectively-once" was quietly false for that path.
+   Ruling: fix in v1, not backlog — new §2.4 optional `idempotencyKey`.
+4. **§6.1 "never deleted" = unbounded growth** in the host's own
+   Postgres. Ruling: promise softened now ("parked until explicitly
+   pruned"); the prune API ships with Phase 5.
+5. **§9.2 allowed same-origin redirects**, which reopens the DNS
+   rebinding window (302-to-self with flipped resolution). Ruling: fixed
+   — every hop re-resolved, re-vetted, re-pinned; hop count capped.
+
+Plus: §5.2 now marks the per-endpoint drain serialization as
+load-bearing so no future session "optimizes" it away.
+
+Process note: flag → rule → amend contract → only then code. This
+exchange is the methodology in miniature.

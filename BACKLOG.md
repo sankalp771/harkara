@@ -9,12 +9,10 @@ Format: `- [area] idea — why it might matter`
 
 ## Contract-adjacent (needs a SEMANTICS decision before any code)
 
-- [send] optional caller-supplied idempotency key on `send()` — the non-tx
-  path lets an app retry a failed `send()` and create a second message with
-  a new webhook-id that receiver dedup can't catch
-- [dlq] retention/pruning API for dead deliveries — §6.1 says "never
-  deleted", which is honest but unbounded; a human-invoked prune with an
-  age floor keeps the promise's spirit without eating the host's disk
+- [dlq] prune API for dead deliveries — §6.1 now promises "parked until
+  explicitly pruned"; the human-invoked prune itself lands with Phase 5
+
+(idempotency key promoted to §2.4 on 2026-08-11 — ships in v1)
 
 ## Implementation ideas (no contract change)
 

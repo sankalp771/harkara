@@ -19,10 +19,25 @@ success is recorded, and the only safe recovery is to send again.
 Duplicates are therefore **expected, rare, and harmless by contract** (see §2).
 
 **1.3** An event is "accepted" only after it is durably persisted, in the
-same transaction as its per-endpoint delivery rows. The API acknowledges
-(HTTP 202) strictly AFTER commit. A crash before commit means the caller
-got an error and knows to resend; a crash after commit means the event is
-safe. There is no window in which an acknowledged event can be lost.
+same transaction as its per-endpoint delivery rows. The promise returned by
+`harkara.send()` resolves only after that persistence is committed; a
+rejected promise means not-accepted, and the caller may safely resend.
+When the caller supplies their own transaction, acceptance occurs at the
+caller's own COMMIT — send() joins it and adds no acknowledgment of its
+own. There is no window in which an accepted event can be lost.
+
+## 1a. Endpoint matching
+
+**1a.1** Each endpoint subscribes to a list of event-type patterns. A
+pattern is either an exact type (`invoice.paid`) or a glob on
+dot-delimited segments (`invoice.*`). An empty list means all events.
+
+**1a.2** An endpoint "matches" a message iff any pattern matches the
+message's type. Fan-out creates exactly one delivery per matching
+endpoint, in the same transaction as the message insert (§1.3).
+
+**1a.3** Matching is evaluated at send time. Endpoints added later do not
+receive earlier messages (replay is the tool for that, §6.3).
 
 ## 2. Deduplication contract (receiver's half of the deal)
 
@@ -36,6 +51,13 @@ ids; on a duplicate, skip processing and still return 2xx.
 **2.3** Sender guarantees ≥1 delivery; receiver collapses N deliveries to 1
 processing. Together: effectively-once. Harkara's docs ship a copy-paste
 dedup example for this reason.
+
+**2.4** `send()` accepts an optional `idempotencyKey`, unique per tenant.
+A resend with the same key returns the previously accepted message (same
+webhook-id) instead of creating a new one. Callers using their own
+transaction don't need it; callers retrying a failed plain send() should
+pass one. With it, §2.3's effectively-once holds across sender-side
+retries too.
 
 ## 3. Retry schedule
 
@@ -101,6 +123,10 @@ innocent reasons):
   (capped). A breaker without a recovery path is a fuse, not a breaker;
   the half-open probe is mandatory.
 
+On close, the backlog drains through the same per-endpoint concurrency
+limit (§5.1); that serialization is load-bearing — it is what prevents
+the drain from re-flattening a just-recovered endpoint.
+
 **5.3** While a circuit is open, the affected deliveries' retry clocks are
 suspended — an endpoint outage must not burn through a message's retry
 budget.
@@ -108,8 +134,9 @@ budget.
 ## 6. Dead letter queue and replay
 
 **6.1** A delivery that exhausts its retry schedule (or fails
-non-retryably, §3.2) transitions to `dead`. Dead deliveries are parked,
-never deleted: full payload, every attempt's status code, response body
+non-retryably, §3.2) transitions to `dead`. Dead deliveries are parked
+until explicitly pruned; Harkara never deletes dead deliveries on its
+own. Full payload, every attempt's status code, response body
 (truncated), and latency are retained for diagnosis.
 
 **6.2** Replay is a **human/API decision, never automatic**. Replaying
@@ -159,10 +186,11 @@ outbound HTTP client. Before any attempt, Harkara resolves the hostname and
 rejects targets in private, loopback, and link-local ranges (including
 cloud metadata addresses).
 
-**9.2** The connection is pinned to the vetted IP (DNS rebinding defense),
-redirects are not followed cross-origin, and response bodies are read with
-a hard byte cap and a total-time cap covering the body, not just the
-headers.
+**9.2** The connection is pinned to the vetted IP (DNS rebinding defense).
+Every followed redirect hop is treated as a fresh request: re-resolved,
+re-vetted against the blocklist, and re-pinned, exactly like the first.
+Hop count is capped. Response bodies are read with a hard byte cap and a
+total-time cap covering the body, not just the headers.
 
 **9.3** HTTPS is required by default; plain HTTP is an explicit opt-in
 intended for local development.
