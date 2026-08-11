@@ -65,6 +65,7 @@ retries too.
 status within the attempt timeout. Everything else is a failure.
 
 **3.2** Failure classification:
+
 - **Retryable:** 5xx, 429, timeouts, connection errors.
 - **Not retryable:** all other 4xx (the request will be equally wrong
   tomorrow). These go straight to the dead letter queue.
@@ -114,6 +115,7 @@ is bounded globally and per-endpoint.
 **5.2** Circuit breaker is per-endpoint, three-state, and trips on **failure
 rate over a recent window** (not backlog size — backlogs can be large for
 innocent reasons):
+
 - **Closed:** normal delivery.
 - **Open:** after the failure-rate threshold is crossed, deliveries to this
   endpoint are paused (not failed, not dropped — they wait). No delivery
@@ -156,6 +158,7 @@ the same key and endpoint is still pending or retrying.
 
 **7.2** Ordering is **best-effort and explicitly broken by two events**,
 both documented rather than hidden:
+
 - When a message goes `dead`, younger messages for that key unblock and
   deliver. The alternative (blocking forever behind a dead message) is
   worse.

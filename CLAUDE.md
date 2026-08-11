@@ -5,6 +5,7 @@ Node/TypeScript apps using their existing Postgres. Library, not service:
 no Redis, no broker, no separate dispatcher. "The Sidekiq of webhooks."
 
 ## Authority order
+
 1. `SEMANTICS.md` — the contract. If code and SEMANTICS.md disagree, the
    code is wrong. Never change SEMANTICS.md to make a test pass; flag the
    conflict and stop.
@@ -12,6 +13,7 @@ no Redis, no broker, no separate dispatcher. "The Sidekiq of webhooks."
 3. This file.
 
 ## Hard rules
+
 - Tests come from SEMANTICS clauses and are written/agreed BEFORE
   implementation. Never weaken, skip, or delete a failing test to go green.
 - All schema changes via node-pg-migrate migrations. Never edit an already
@@ -29,6 +31,7 @@ no Redis, no broker, no separate dispatcher. "The Sidekiq of webhooks."
   stop-and-ask. They outlive any session.
 
 ## Conventions
+
 - TypeScript strict; no `any` in src/ (tests may).
 - One feature per session, Plan Mode first, plan approved before code.
 - Mid-session ideas go to BACKLOG.md as one-liners. Do not implement them.
@@ -36,6 +39,7 @@ no Redis, no broker, no separate dispatcher. "The Sidekiq of webhooks."
 - Every merged PR updates the Session log section in REBUILD_PLAN.md.
 
 ## Definition of done for any task
+
 1. Named SEMANTICS clauses have passing tests in CI.
 2. No unrelated files touched.
 3. A 3-line summary the maintainer (a human, learning this domain) can
