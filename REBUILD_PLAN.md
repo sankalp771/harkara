@@ -19,6 +19,7 @@ let it implement against the pre-written tests. New ideas mid-session go to
 ## Phase 0 — Scaffolding (half a day)
 
 No product code. Skeleton only:
+
 - TypeScript strict, single package `harkara`, `src/` + `test/`
 - vitest + testcontainers (or docker-compose Postgres) for integration tests
 - `node-pg-migrate` wired: `harkara` never runs raw schema.sql at boot
@@ -35,6 +36,7 @@ Tables: `messages`, `endpoints`, `endpoint_secrets` (many per endpoint —
 rotation needs it, §4.5), `deliveries`, `delivery_attempts`.
 
 Non-negotiables from the audit:
+
 - `deliveries.locked_at TIMESTAMPTZ` + `locked_by` — §8 depends on it
 - Partial unique index on `(message_id, endpoint_id) WHERE status != 'dead'`
   and NO table-level unique constraint — replay must be insertable (§6.2).
@@ -71,6 +73,7 @@ every N seconds: `locked_at` older than visibility timeout → back to
 pending (§8.1–8.2). Graceful shutdown finishes in-flight attempts.
 
 Tests (the fun ones):
+
 - Two workers, 10k messages, zero double-claims
 - kill -9 mid-delivery → message redelivered, never lost (§8.3)
 - One endpoint sleeping 5s does not delay other endpoints' deliveries
