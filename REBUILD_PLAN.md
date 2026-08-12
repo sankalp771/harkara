@@ -186,3 +186,11 @@ load-bearing so no future session "optimizes" it away.
 
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
+
+### 2026-08-12 — phase-0: scaffolding merged (PR #1)
+
+Strict TS skeleton, vitest against real Postgres (testcontainers locally /
+service container in CI, one code path), node-pg-migrate wired, CI gate
+live: lint → format → typecheck → migrate → test. Phase gate met — CI
+green on a hello-world test talking to real Postgres. Nothing kicked to
+backlog.
