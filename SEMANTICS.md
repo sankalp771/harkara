@@ -204,3 +204,12 @@ Harkara is a library, not a service. It will not ship: a hosted offering, a
 separate dispatcher service, a required Redis/broker, multi-region
 delivery, or enterprise SLAs. Teams that need those should use Svix,
 Hookdeck Outpost, or Convoy — and Harkara's docs say so plainly.
+
+## 11. Platform floor
+
+Harkara requires **PostgreSQL 15 or newer**. This is a decision, not an
+accident: the §2.4 per-tenant idempotency index depends on
+`NULLS NOT DISTINCT` (single-tenant rows carry `tenant_id NULL`, and plain
+UNIQUE treats NULL ≠ NULL). CI runs the full suite against the floor (15)
+and a current major, so the documented minimum is enforced by machine, not
+memory.

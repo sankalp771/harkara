@@ -11,6 +11,10 @@ Format: `- [area] idea — why it might matter`
 
 - [dlq] prune API for dead deliveries — §6.1 now promises "parked until
   explicitly pruned"; the human-invoked prune itself lands with Phase 5
+- [endpoints] deletion semantics undefined — deliveries.endpoint_id has no
+  ON DELETE, so any endpoint with history can never be deleted (FK
+  violation); probably right (history is forensic, §6.1) but then the API
+  needs disable-not-delete — must be a written decision, not an FK accident
 
 (idempotency key promoted to §2.4 on 2026-08-11 — ships in v1)
 
