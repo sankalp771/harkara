@@ -207,9 +207,10 @@ Hookdeck Outpost, or Convoy — and Harkara's docs say so plainly.
 
 ## 11. Platform floor
 
-Harkara requires **PostgreSQL 15 or newer**. This is a decision, not an
-accident: the §2.4 per-tenant idempotency index depends on
-`NULLS NOT DISTINCT` (single-tenant rows carry `tenant_id NULL`, and plain
-UNIQUE treats NULL ≠ NULL). CI runs the full suite against the floor (15)
-and a current major, so the documented minimum is enforced by machine, not
-memory.
+Harkara supports **all non-EOL PostgreSQL versions** — the floor is
+inherited from PostgreSQL's own release lifecycle, not invented here.
+As of this writing that means 15+ (the §2.4 per-tenant idempotency index
+depends on `NULLS NOT DISTINCT`; single-tenant rows carry `tenant_id
+NULL`, and plain UNIQUE treats NULL ≠ NULL). CI runs the full suite
+against the oldest supported major and a current one, so the promise is
+enforced by machine, not memory.

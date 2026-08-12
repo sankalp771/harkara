@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      # Test the floor, not just the ceiling: SEMANTICS §11 promises PG 15+,
-      # so 15 in the matrix keeps that promise machine-enforced.
+      # Test the floor, not just the ceiling. SEMANTICS §11: all non-EOL
+      # PostgreSQL versions — bump 15 out when it EOLs, per postgresql.org.
       matrix:
         postgres: [15, 17]
 

@@ -195,8 +195,10 @@ index on deliveries (message_id, endpoint_id) WHERE status <> 'dead' —
 replay insertable, the old repo's bug inverted; NULLS NOT DISTINCT on the
 idempotency index (single-tenant NULL rows); payload as TEXT not JSONB
 (byte-stable for §4.2 signing). Review flagged one silent decision made
-loud: NULLS NOT DISTINCT sets a PostgreSQL 15+ floor → now SEMANTICS §11,
-and CI tests the floor (PG 15 + 17 matrix). Kicked to backlog: endpoint
+loud: NULLS NOT DISTINCT sets a Postgres floor → SEMANTICS §11 adopts a
+rolling policy ("all non-EOL versions", today 15+) and CI tests the floor
+(PG 15 + 17 matrix). Known fallback if a real PG14 user ever appears:
+COALESCE(tenant_id, '') expression index — on request, not preemptively. Kicked to backlog: endpoint
 deletion semantics (disable-not-delete question). MIT license added.
 
 ### 2026-08-12 — phase-0: scaffolding merged (PR #1)
