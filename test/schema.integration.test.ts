@@ -87,16 +87,12 @@ describe('phase 1 schema', () => {
 
     // The old repo's bug: once dead, a hard unique constraint blocked replay
     // forever. The partial index must allow a fresh row after death.
-    await pool!.query(`UPDATE deliveries SET status = 'dead' WHERE id = $1`, [
-      first.rows[0]!.id,
-    ]);
+    await pool!.query(`UPDATE deliveries SET status = 'dead' WHERE id = $1`, [first.rows[0]!.id]);
     const replay = await insertDelivery();
     expect(replay.rows[0]!.id).not.toBe(first.rows[0]!.id);
 
     // Any number of dead rows may coexist (multiple exhausted replays).
-    await pool!.query(`UPDATE deliveries SET status = 'dead' WHERE id = $1`, [
-      replay.rows[0]!.id,
-    ]);
+    await pool!.query(`UPDATE deliveries SET status = 'dead' WHERE id = $1`, [replay.rows[0]!.id]);
     await expect(insertDelivery('dead')).resolves.toBeDefined();
 
     const { rows } = await pool!.query<{ n: number }>(
@@ -176,10 +172,10 @@ describe('phase 1 schema', () => {
   it('§8.1 deliveries carry locked_at/locked_by for the reaper', async () => {
     const messageId = await newMessage(pool!);
     const endpointId = await newEndpoint(pool!);
-    await pool!.query(
-      `INSERT INTO deliveries (message_id, endpoint_id) VALUES ($1, $2)`,
-      [messageId, endpointId],
-    );
+    await pool!.query(`INSERT INTO deliveries (message_id, endpoint_id) VALUES ($1, $2)`, [
+      messageId,
+      endpointId,
+    ]);
 
     const { rowCount } = await pool!.query(
       `UPDATE deliveries SET locked_at = now(), locked_by = 'worker-1'
