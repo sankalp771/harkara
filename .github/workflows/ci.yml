@@ -9,9 +9,15 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    strategy:
+      # Test the floor, not just the ceiling: SEMANTICS §11 promises PG 15+,
+      # so 15 in the matrix keeps that promise machine-enforced.
+      matrix:
+        postgres: [15, 17]
+
     services:
       postgres:
-        image: postgres:17
+        image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres

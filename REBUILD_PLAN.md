@@ -187,6 +187,18 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-12 — phase-1: schema (PR #2)
+
+Five tables, tests-from-clauses first (auditable in the git log: tests
+commit precedes migration commit). Load-bearing details: partial unique
+index on deliveries (message_id, endpoint_id) WHERE status <> 'dead' —
+replay insertable, the old repo's bug inverted; NULLS NOT DISTINCT on the
+idempotency index (single-tenant NULL rows); payload as TEXT not JSONB
+(byte-stable for §4.2 signing). Review flagged one silent decision made
+loud: NULLS NOT DISTINCT sets a PostgreSQL 15+ floor → now SEMANTICS §11,
+and CI tests the floor (PG 15 + 17 matrix). Kicked to backlog: endpoint
+deletion semantics (disable-not-delete question). MIT license added.
+
 ### 2026-08-12 — phase-0: scaffolding merged (PR #1)
 
 Strict TS skeleton, vitest against real Postgres (testcontainers locally /
