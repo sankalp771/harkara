@@ -18,6 +18,10 @@ Format: `- [area] idea — why it might matter`
 
 (idempotency key promoted to §2.4 on 2026-08-11 — ships in v1)
 
+- [endpoints] firehose endpoints (one endpoint receiving events across all
+  tenants) — rejected for v1 by §1a.4's strict tenant equality; would need
+  its own contract clause and an explicit opt-in flag if ever wanted
+
 ## Implementation ideas (no contract change)
 
 - [ops] `harkara doctor` — one command that checks migrations applied,
