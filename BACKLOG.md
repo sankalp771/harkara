@@ -21,6 +21,10 @@ Format: `- [area] idea — why it might matter`
 - [endpoints] firehose endpoints (one endpoint receiving events across all
   tenants) — rejected for v1 by §1a.4's strict tenant equality; would need
   its own contract clause and an explicit opt-in flag if ever wanted
+- [send] §2.4 key reuse with mismatched payload — today Harkara silently
+  returns the original message; Stripe treats it as an explicit error,
+  which catches real caller bugs (key derived from the wrong variable).
+  Silent-return is a defensible v1 choice but it is a choice — re-litigate
 
 ## Implementation ideas (no contract change)
 

@@ -73,7 +73,9 @@ export async function send(
     await client.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK');
+    // If the connection itself died, ROLLBACK throws too — swallow it so
+    // the caller sees the ORIGINAL failure, not the rollback's echo.
+    await client.query('ROLLBACK').catch(() => undefined);
     throw err;
   } finally {
     client.release();
