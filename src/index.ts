@@ -7,3 +7,4 @@
  */
 export { createHarkara, type Harkara, type HarkaraOptions } from './harkara.js';
 export type { SendEvent, SendOptions, SendResult } from './send.js';
+export type { HarkaraWorker, WorkerOptions } from './worker.js';
