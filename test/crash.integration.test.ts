@@ -16,12 +16,15 @@ import { seedDelivery, seedEndpoint, seedMessage, truncateAll, waitUntil } from 
  * hole the rules exist to block.
  */
 
-const TSX = path.resolve('node_modules', 'tsx', 'dist', 'cli.mjs');
 const CHILD = path.resolve('test', 'helpers', 'worker-child.ts');
 
 function spawnWorkerChild(env: Record<string, string>): Promise<ChildProcess> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [TSX, CHILD], {
+    // tsx as an --import loader, NOT its CLI: the CLI re-spawns node as a
+    // grandchild, so SIGKILLing the wrapper orphaned the real worker — CI
+    // caught it claiming rows in a LATER test file as 'crash-child'.
+    // With --import, the worker IS the top process and SIGKILL kills it.
+    const child = spawn(process.execPath, ['--import', 'tsx', CHILD], {
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'inherit'],
     });
