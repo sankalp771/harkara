@@ -82,9 +82,12 @@ describe('phase 3 throughput: two workers, 10k deliveries, zero double-claims', 
       `SELECT count(*)::int AS n FROM delivery_attempts`,
     );
     expect(attempts[0]!.n).toBe(TOTAL);
-    const { rows: claimers } = await pool!.query<{ n: number }>(
-      `SELECT count(DISTINCT locked_by)::int AS n FROM deliveries`,
+    // Stronger than a count: the exact set. If any OTHER worker id shows
+    // up here, a worker leaked out of another test file and claimed our
+    // rows — the id itself names the culprit.
+    const { rows: claimers } = await pool!.query<{ locked_by: string }>(
+      `SELECT DISTINCT locked_by FROM deliveries ORDER BY locked_by`,
     );
-    expect(claimers[0]!.n).toBe(2);
+    expect(claimers.map((r) => r.locked_by)).toEqual(['w-1', 'w-2']);
   }, 180_000);
 });
