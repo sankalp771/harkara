@@ -31,7 +31,9 @@ function spawnWorkerChild(env: Record<string, string>): Promise<ChildProcess> {
       out += chunk.toString('utf8');
       if (out.includes('READY')) resolve(child);
     });
-    setTimeout(() => reject(new Error('worker-child did not become READY')), 30_000);
+    setTimeout(() => {
+      reject(new Error('worker-child did not become READY'));
+    }, 30_000);
   });
 }
 
@@ -62,6 +64,7 @@ describe('phase 3 crash recovery (§8.3)', () => {
     const child = await spawnWorkerChild({
       DATABASE_URL: await getConnectionString(),
       ATTEMPT_TIMEOUT_MS: '60000', // attempt must outlive the SIGKILL moment
+      VISIBILITY_TIMEOUT_MS: '120000', // must be ≥ 2× attempt timeout
     });
 
     // The request arriving at the receiver = the child is mid-delivery,
@@ -76,7 +79,11 @@ describe('phase 3 crash recovery (§8.3)', () => {
 
     // Phase B: the process dies for real. No shutdown path runs.
     child.kill('SIGKILL');
-    await new Promise<void>((resolve) => child.on('exit', () => resolve()));
+    await new Promise<void>((resolve) => {
+      child.on('exit', () => {
+        resolve();
+      });
+    });
 
     // The row still exists, still locked by a ghost — stranded, not lost.
     const { rows: stranded } = await pool!.query<{ status: string }>(
@@ -93,6 +100,7 @@ describe('phase 3 crash recovery (§8.3)', () => {
       workerId: 'rescuer',
       pollIntervalMs: 50,
       reaperIntervalMs: 100,
+      attemptTimeoutMs: 500,
       visibilityTimeoutMs: 1_500,
     });
 

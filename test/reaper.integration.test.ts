@@ -47,6 +47,7 @@ describe('phase 3 reaper', () => {
     const w = harkara.startWorker({
       pollIntervalMs: 50,
       reaperIntervalMs: 100,
+      attemptTimeoutMs: 1_000,
       visibilityTimeoutMs: 2_000,
     });
     workers.push(w);
@@ -91,6 +92,7 @@ describe('phase 3 reaper', () => {
     const w = harkara.startWorker({
       pollIntervalMs: 50,
       reaperIntervalMs: 100,
+      attemptTimeoutMs: 2_000,
       visibilityTimeoutMs: 5_000,
     });
     workers.push(w);

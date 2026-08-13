@@ -187,6 +187,23 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-13 — phase-3: worker loop + crash recovery (PR #6)
+
+The hard one. Single-loop worker, claim-and-mark in ONE statement,
+reaper keyed on locked_at only, graceful stop. Per-endpoint concurrency
+1 is GLOBAL (T1 ruling): endpoint-row lock + NOT EXISTS + post-claim
+verify-demote. The 10k throughput test EARNED ITS KEEP: first run
+double-delivered 195/10000 because the claim subquery locked only
+endpoint rows — a stale READ COMMITTED snapshot let EvalPlanQual re-apply
+the IN-set to an already-claimed delivery. Fix: FOR UPDATE SKIP LOCKED on
+the delivery rows inside the LATERAL (the lock chain re-evaluates quals
+on the newest row version). Also: migration 2 (claim-path indexes —
+Phase 1's next_attempt_at index couldn't serve per-endpoint lookups; the
+10k test crawled until they existed). Real node:http receiver harness +
+real SIGKILLed child process per maintainer directive; tsx added
+(dev-only) to run the TS child. Interim scaffolding flagged: uniform 5s
+retry until Phase 5, unsigned deliveries until Phase 4.
+
 ### 2026-08-13 — phase-2: send API (PR #4)
 
 The headline feature: harkara.send(event, { tx? }) — transactional

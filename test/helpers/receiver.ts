@@ -18,9 +18,7 @@ export interface ReceivedRequest {
   respondedAt?: number;
 }
 
-export type Behavior =
-  | { status: number; body?: string; delayMs?: number }
-  | 'hang'; // accept the request, never respond
+export type Behavior = { status: number; body?: string; delayMs?: number } | 'hang'; // accept the request, never respond
 
 export interface Receiver {
   /** Base URL, e.g. http://127.0.0.1:54321 — append a path per endpoint. */
@@ -119,7 +117,11 @@ export async function startReceiver(): Promise<Receiver> {
       if (requests.length >= n) return Promise.resolve();
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
-          reject(new Error(`receiver: timed out waiting for ${String(n)} requests (saw ${String(requests.length)})`));
+          reject(
+            new Error(
+              `receiver: timed out waiting for ${String(n)} requests (saw ${String(requests.length)})`,
+            ),
+          );
         }, timeoutMs);
         waiters.push({
           n,
@@ -133,7 +135,9 @@ export async function startReceiver(): Promise<Receiver> {
     close() {
       for (const s of sockets) s.destroy();
       return new Promise((resolve) => {
-        server.close(() => resolve());
+        server.close(() => {
+          resolve();
+        });
       });
     },
   };
