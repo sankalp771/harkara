@@ -187,6 +187,18 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-13 — phase-2: send API (PR #4)
+
+The headline feature: harkara.send(event, { tx? }) — transactional
+outbox. Persist-then-resolve without a tx; with a caller tx, send() joins
+their COMMIT and acks nothing itself (proven by an observer-connection
+test that sees nothing pre-COMMIT, everything post). Fan-out per §1a in
+the same tx via a pure, unit-tested matcher. §2.4 idempotencyKey wired to
+Phase 1's NULLS NOT DISTINCT arbiter index. Two contract amendments
+ratified at plan approval: §1a.1 glob = exactly-one-segment; new §1a.4
+tenant-strict matching (firehose endpoints → BACKLOG). First real src/
+code — the no-any lint gate is now guarding product code.
+
 ### 2026-08-12 — phase-1: schema (PR #2)
 
 Five tables, tests-from-clauses first (auditable in the git log: tests

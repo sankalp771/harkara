@@ -39,7 +39,9 @@ describe('phase 2 send()', () => {
     pool = await createPool();
     await migrateUp();
     // Each test creates its own endpoints; clear whatever earlier suites left.
-    await pool.query('TRUNCATE delivery_attempts, deliveries, endpoint_secrets, endpoints, messages');
+    await pool.query(
+      'TRUNCATE delivery_attempts, deliveries, endpoint_secrets, endpoints, messages',
+    );
     observer = new Pool({ connectionString: await getConnectionString() });
     harkara = createHarkara({ pool });
   });
@@ -66,7 +68,7 @@ describe('phase 2 send()', () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]!.event_type).toBe('order.created');
-    expect(await deliveryEndpoints(observer! as Pool, messageId)).toEqual([endpointId]);
+    expect(await deliveryEndpoints(observer!, messageId)).toEqual([endpointId]);
   });
 
   it('§1.3 caller tx rolled back: nothing exists — the event was never accepted', async () => {
@@ -93,7 +95,7 @@ describe('phase 2 send()', () => {
     expect(dels).toHaveLength(0);
   });
 
-  it("§1.3 caller tx: invisible before THEIR commit, visible after — send() joins, never acks", async () => {
+  it('§1.3 caller tx: invisible before THEIR commit, visible after — send() joins, never acks', async () => {
     await addEndpoint(pool!, { eventTypes: ['user.updated'] });
 
     const client: PoolClient = await pool!.connect();
