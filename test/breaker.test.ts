@@ -88,6 +88,17 @@ describe('§5.2 trip: failure rate over a window, with a volume floor', () => {
     expect(tripped.state).toBe('open');
   });
 
+  it('never trips on a success — meeting the floor with good news opens nothing', () => {
+    // 2 failures sit below the floor of 3; the success that meets the
+    // floor makes the rate 2/3 ≥ 50% — but the arriving evidence says
+    // the endpoint is healthy, so the breaker stays closed…
+    const afterSuccess = feed(closedRow(), [true, true, false]);
+    expect(afterSuccess.state).toBe('closed');
+    // …and the next FAILURE (3/4 = 75%) is what trips it.
+    const afterFailure = applyOutcome(afterSuccess, true, CFG, NOW + 3);
+    expect(afterFailure.state).toBe('open');
+  });
+
   it('a stale window rolls before counting — old failures do not haunt the rate', () => {
     const two = feed(closedRow(), [true, true]); // 2/2, floor not met
     // Third failure arrives one window later: counters restart at 1/1.

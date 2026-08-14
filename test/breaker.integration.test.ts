@@ -1,6 +1,11 @@
 import type { Pool } from 'pg';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createHarkara, type Harkara, type HarkaraWorker } from '../src/index.js';
+import {
+  createHarkara,
+  type Harkara,
+  type HarkaraWorker,
+  type WorkerOptions,
+} from '../src/index.js';
 import { createPool } from './helpers/db.js';
 import { migrateUp } from './helpers/migrate.js';
 import { startReceiver, type Receiver } from './helpers/receiver.js';
@@ -35,15 +40,14 @@ describe('phase 6 circuit breaker', () => {
     maxCooldownMs: 120_000,
   };
 
-  function runWorker(overrides: Record<string, unknown> = {}): HarkaraWorker {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+  function runWorker(overrides: Partial<WorkerOptions> = {}): HarkaraWorker {
     const w = harkara.startWorker({
       pollIntervalMs: 25,
       reaperIntervalMs: 60_000,
       retrySchedule: Array<number>(8).fill(100),
       breaker: BREAKER,
       ...overrides,
-    } as any);
+    });
     workers.push(w);
     return w;
   }
@@ -150,7 +154,7 @@ describe('phase 6 circuit breaker', () => {
     // The endpoint recovers, but answers slowly — the probe stays in
     // flight for 400ms while 6 deliveries are pending and hungry.
     receiver!.behave(() => ({ status: 200, delayMs: 400 }));
-    await waitUntil(async () => hits('/probe') > atTrip, { timeoutMs: 10_000 });
+    await waitUntil(() => Promise.resolve(hits('/probe') > atTrip), { timeoutMs: 10_000 });
     expect(hits('/probe')).toBe(atTrip + 1); // the probe, alone
     await new Promise((r) => setTimeout(r, 200)); // probe still in flight
     expect(hits('/probe')).toBe(atTrip + 1); // still alone
@@ -273,7 +277,11 @@ describe('phase 6 circuit breaker', () => {
 
     expect(await breakerRow(endpointId)).toBeUndefined(); // no row = closed (T5)
     expect(hits('/refuse')).toBe(0);
-    expect((await statuses(endpointId)).pending).toBe(1); // still waiting, not dead
+    // Still parked on config (§3.2 never-dead), possibly mid-refusal —
+    // what matters is that it neither died nor delivered.
+    const s = await statuses(endpointId);
+    expect(s.dead ?? 0).toBe(0);
+    expect(s.delivered ?? 0).toBe(0);
   }, 20_000);
 
   it("§5.1 isolation: one endpoint's open breaker never delays another's deliveries", async () => {

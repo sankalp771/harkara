@@ -193,6 +193,33 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-15 — phase-6: circuit breaker (PR #9)
+
+§5.2/§5.3 live: per-endpoint three-state breaker, state shared through a
+lazy endpoint_breakers row (missing row = closed), tumbling-window
+counters so the hot path never COUNT(*)s, half-open probe riding the
+§5.1 exclusivity machinery unchanged (endpoint lock + NOT EXISTS +
+demote — a crashed probe is reaped and simply re-probed). T1–T5 ratified
+at plan approval: **refusals never feed the window** (Phase 5 rider 3
+discharged: the breaker measures the wire, refusals never touch it);
+breaker failure = §3.1 failure (non-retryable counts too); **probes burn
+real budget** (the probe-martyr may die into the DLQ — visible,
+replayable, never a zombie); tumbling window over sliding; separate
+state table over endpoint columns. Cooldown doubles per failed probe,
+capped, and resets on close — clean slate ratified.
+
+Bug story earned live: first full-suite run, Phase 5's replay test
+caught the breaker **tripping on a SUCCESS** — three 410s then a replay:
+the successes met the volume floor while stale failures still dominated
+the rate (3/5 = 60%), and the drain froze for a 30s cooldown. Ruling
+folded into the transition: only a failure can trip; a success only
+updates counters (on a success the rate can only fall — crossing the
+floor on good news is a floor artifact, not evidence). Pinned by unit
+test. §5.3 suspension is positional, not temporal: budget is attempts,
+open means no attempts, so an outage burns nothing — proven by the
+frozen-attempt-counts test. Kicked to BACKLOG: probe-martyr named
+paragraph for the Phase 9 docs.
+
 ### 2026-08-15 — phase-5: retries + DLQ + replay (PR #8)
 
 Phase 3's interim scaffolding retired: §3.2 classification (4xx/3xx →
