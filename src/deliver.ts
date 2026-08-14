@@ -1,4 +1,5 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+import { applyOutcome, type BreakerConfig, type BreakerRow, type BreakerState } from './breaker.js';
 import {
   classify,
   configDelayMs,
@@ -32,6 +33,7 @@ export async function attemptDelivery(
   delivery: ClaimedDelivery,
   attemptTimeoutMs: number,
   retrySchedule: readonly number[],
+  breaker: BreakerConfig,
 ): Promise<void> {
   const startedAt = Date.now();
   let statusCode: number | null = null;
@@ -134,6 +136,14 @@ export async function attemptDelivery(
         );
       }
     }
+
+    // §5.2 — fold this outcome into the breaker, in the SAME transaction
+    // as the attempt row and the delivery's next state: breaker state can
+    // never disagree with the outcome that caused it. Config refusals
+    // never reach here (T1): no wire, no evidence.
+    if (outcome !== 'configError') {
+      await recordBreakerOutcome(client, delivery.endpointId, outcome !== 'success', breaker);
+    }
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined);
@@ -141,4 +151,74 @@ export async function attemptDelivery(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Ensure the breaker row (lazy — missing means closed), lock it, apply
+ * the pure transition, write it back. Deadlock-free with the claim path
+ * by Phase 3's argument: claims never wait (SKIP LOCKED everywhere), so
+ * no wait cycle can close through this row lock.
+ */
+async function recordBreakerOutcome(
+  client: PoolClient,
+  endpointId: string,
+  isFailure: boolean,
+  cfg: BreakerConfig,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO endpoint_breakers (endpoint_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+    [endpointId],
+  );
+  const { rows } = await client.query<{
+    state: BreakerState;
+    window_started_ms: number | null;
+    window_attempts: number;
+    window_failures: number;
+    cooldown_ms: number | null;
+    opened_ms: number | null;
+    open_until_ms: number | null;
+  }>(
+    `SELECT state,
+            extract(epoch FROM window_started_at)::float8 * 1000 AS window_started_ms,
+            window_attempts, window_failures, cooldown_ms,
+            extract(epoch FROM opened_at)::float8 * 1000 AS opened_ms,
+            extract(epoch FROM open_until)::float8 * 1000 AS open_until_ms
+     FROM endpoint_breakers WHERE endpoint_id = $1
+     FOR UPDATE`,
+    [endpointId],
+  );
+  const r = rows[0];
+  if (r === undefined) return; // row vanished (endpoint deleted mid-flight)
+
+  const before: BreakerRow = {
+    state: r.state,
+    windowStartedAt: r.window_started_ms,
+    windowAttempts: r.window_attempts,
+    windowFailures: r.window_failures,
+    cooldownMs: r.cooldown_ms,
+    openedAt: r.opened_ms,
+    openUntil: r.open_until_ms,
+  };
+  const after = applyOutcome(before, isFailure, cfg, Date.now());
+
+  await client.query(
+    `UPDATE endpoint_breakers
+     SET state = $2,
+         window_started_at = to_timestamp($3::float8 / 1000.0),
+         window_attempts = $4, window_failures = $5, cooldown_ms = $6,
+         opened_at = to_timestamp($7::float8 / 1000.0),
+         open_until = to_timestamp($8::float8 / 1000.0),
+         updated_at = now()
+     WHERE endpoint_id = $1`,
+    [
+      endpointId,
+      after.state,
+      after.windowStartedAt,
+      after.windowAttempts,
+      after.windowFailures,
+      after.cooldownMs,
+      after.openedAt,
+      after.openUntil,
+    ],
+  );
 }

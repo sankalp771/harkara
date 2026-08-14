@@ -3,6 +3,7 @@ import { Pool, type PoolClient } from 'pg';
 import { createHarkara, type Harkara } from '../src/index.js';
 import { createPool, getConnectionString } from './helpers/db.js';
 import { migrateUp } from './helpers/migrate.js';
+import { truncateAll } from './helpers/seed.js';
 
 /**
  * Phase 2 — send() tests, written from the clauses BEFORE the
@@ -39,9 +40,7 @@ describe('phase 2 send()', () => {
     pool = await createPool();
     await migrateUp();
     // Each test creates its own endpoints; clear whatever earlier suites left.
-    await pool.query(
-      'TRUNCATE delivery_attempts, deliveries, endpoint_secrets, endpoints, messages',
-    );
+    await truncateAll(pool);
     observer = new Pool({ connectionString: await getConnectionString() });
     harkara = createHarkara({ pool });
   });

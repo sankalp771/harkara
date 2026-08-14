@@ -25,12 +25,10 @@ Format: `- [area] idea — why it might matter`
   endpoint's config-blocked deliveries — fix-triggers-resume (Phase 5
   rider 1: kills the up-to-1h resume-latency wart without multiplying
   refusal rows; lands with the future secrets/registration API)
-- [P6] the breaker plan must explicitly rule whether config-refusal
-  attempt rows feed the failure-rate window (Phase 5 rider 3 — possibly
-  desirable, but decided, not emergent)
 
 (config-error bucket promoted to §3.2 on 2026-08-15 — Phase 5, ruled
-never-dead with frozen schedule position)
+never-dead with frozen schedule position; refusals × breaker ruled on
+2026-08-15 — Phase 6 T1, refusals never feed the window; see Rejected)
 
 - [send] §2.4 key reuse with mismatched payload — today Harkara silently
   returns the original message; Stripe treats it as an explicit error,
@@ -45,7 +43,20 @@ never-dead with frozen schedule position)
   state change) via an EventEmitter so hosts can wire their own metrics
 - [docs] serverless caveat — the worker loop assumes a long-lived process;
   document that Lambda-style hosts need a pinned worker or scheduled runner
+- [docs] the probe-martyr pattern gets a NAMED paragraph in the Phase 9
+  breaker docs — during a long outage one delivery absorbs the half-open
+  probes and may die into the DLQ so the rest keep their budget (§5.3/T3);
+  maintainer directive at Phase 6 approval
 
 ## Rejected (kept so we don't re-litigate)
 
-- (empty)
+- [breaker] config refusals feeding the failure-rate window (as failures
+  OR as attempts) — rejected Phase 6 T1: the breaker measures the wire,
+  refusals never touch it; feeding them in trips on operator mistakes and
+  deadlocks the probe (a refusal can neither close nor reopen a circuit)
+- [breaker] probe failures not incrementing attempt_count — rejected
+  Phase 6 T3: creates a delivery that can never die and poisons the §6.1
+  attempt diary; the probe-martyr dies visibly into the DLQ instead
+- [breaker] cooldown memory across incidents — rejected Phase 6 T5: a
+  recovered endpoint earns a clean slate on close; carrying doubled
+  cooldowns across separate outages punishes past sins

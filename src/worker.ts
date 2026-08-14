@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
+import { DEFAULT_BREAKER, type BreakerConfig } from './breaker.js';
 import { attemptDelivery, type ClaimedDelivery } from './deliver.js';
 import { DEFAULT_RETRY_SCHEDULE } from './retry.js';
 
@@ -18,6 +19,8 @@ export interface WorkerOptions {
   workerId?: string;
   /** §3.3 retry schedule in ms. Default 10s → 30s → 2m → 10m → 1h. */
   retrySchedule?: number[];
+  /** §5.2 circuit breaker thresholds. Defaults are the contract's. */
+  breaker?: Partial<BreakerConfig>;
 }
 
 export interface HarkaraWorker {
@@ -33,6 +36,7 @@ interface ResolvedOptions {
   reaperIntervalMs: number;
   workerId: string;
   retrySchedule: readonly number[];
+  breaker: BreakerConfig;
 }
 
 /**
@@ -49,9 +53,19 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
     reaperIntervalMs: options.reaperIntervalMs ?? 10_000,
     workerId: options.workerId ?? `worker-${randomUUID()}`,
     retrySchedule: options.retrySchedule ?? DEFAULT_RETRY_SCHEDULE,
+    breaker: { ...DEFAULT_BREAKER, ...options.breaker },
   };
   if (opts.retrySchedule.length === 0) {
     throw new Error('harkara.startWorker: retrySchedule must have at least one step');
+  }
+  if (opts.breaker.failureRate <= 0 || opts.breaker.failureRate > 1) {
+    throw new Error('harkara.startWorker: breaker.failureRate must be in (0, 1]');
+  }
+  if (opts.breaker.minAttempts < 1) {
+    throw new Error('harkara.startWorker: breaker.minAttempts must be at least 1');
+  }
+  if (opts.breaker.maxCooldownMs < opts.breaker.cooldownMs) {
+    throw new Error('harkara.startWorker: breaker.maxCooldownMs must be >= breaker.cooldownMs');
   }
   // A lock must never expire while its attempt can still legally be running
   // — that would manufacture §8.3 duplicates on every slow response.
@@ -85,7 +99,13 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
         }
 
         for (const delivery of claimed) {
-          const attempt = attemptDelivery(pool, delivery, opts.attemptTimeoutMs, opts.retrySchedule)
+          const attempt = attemptDelivery(
+            pool,
+            delivery,
+            opts.attemptTimeoutMs,
+            opts.retrySchedule,
+            opts.breaker,
+          )
             .catch(() => undefined) // recording failed — the reaper will recover the claim
             .finally(() => inFlight.delete(attempt));
           inFlight.add(attempt);
@@ -130,6 +150,16 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
  *   closed by demoteCrowdedClaims below.
  * - the LATERAL LIMIT 1 takes at most one delivery per endpoint per batch
  *   (DISTINCT ON cannot be combined with FOR UPDATE).
+ *
+ * §5.2 breaker gating (Phase 6): a LEFT JOIN on endpoint_breakers — a
+ * missing row means closed (T5), read via MVCC with no extra hot-path
+ * locks. Claimable states: closed; open with an expired cooldown (this
+ * claim becomes the probe); half_open (so a crashed-and-reaped probe is
+ * simply re-probed — no stuck state). The `probes` CTE flips
+ * open → half_open for endpoints claimed off an expired cooldown, atomic
+ * with the claim itself. Exactly-one-probe needs no new machinery: the
+ * §5.1 stack above (endpoint lock + NOT EXISTS + demoteCrowdedClaims)
+ * already guarantees one in-flight per endpoint.
  */
 async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<ClaimedDelivery[]> {
   const { rows } = await pool.query<{
@@ -146,6 +176,7 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
        WHERE id IN (
          SELECT picked.id
          FROM endpoints e
+         LEFT JOIN endpoint_breakers b ON b.endpoint_id = e.id
          JOIN LATERAL (
            SELECT d.id
            FROM deliveries d
@@ -160,11 +191,21 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
            SELECT 1 FROM deliveries busy
            WHERE busy.endpoint_id = e.id AND busy.status = 'delivering'
          )
+         AND (b.endpoint_id IS NULL
+              OR b.state = 'closed'
+              OR (b.state = 'open' AND b.open_until <= now())
+              OR b.state = 'half_open')
          ORDER BY e.id
          LIMIT $2
          FOR UPDATE OF e SKIP LOCKED
        )
        RETURNING id, message_id, endpoint_id, attempt_count
+     ),
+     probes AS (
+       UPDATE endpoint_breakers pb
+       SET state = 'half_open', updated_at = now()
+       WHERE pb.state = 'open'
+         AND pb.endpoint_id IN (SELECT endpoint_id FROM claimed)
      )
      SELECT c.id, c.message_id, c.endpoint_id, c.attempt_count, e.url, m.payload,
             COALESCE(
