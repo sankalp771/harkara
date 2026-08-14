@@ -1,7 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createHarkara, type Harkara, type HarkaraWorker, type WorkerOptions } from '../src/index.js';
+import {
+  createHarkara,
+  type Harkara,
+  type HarkaraWorker,
+  type WorkerOptions,
+} from '../src/index.js';
 import { createPool } from './helpers/db.js';
 import { migrateUp } from './helpers/migrate.js';
 import { startReceiver, type Receiver } from './helpers/receiver.js';
@@ -191,7 +196,7 @@ describe('phase 5 retries and the DLQ', () => {
     await waitUntil(async () => ((await deliveryOf(endpointId))?.attempt_count ?? 0) >= 1);
 
     const { rows } = await pool!.query<{ delay_ms: number }>(
-      `SELECT extract(epoch FROM (next_attempt_at - now())) * 1000 AS delay_ms
+      `SELECT (extract(epoch FROM (next_attempt_at - now())) * 1000)::float8 AS delay_ms
        FROM deliveries WHERE endpoint_id = $1`,
       [endpointId],
     );

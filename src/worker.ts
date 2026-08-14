@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { attemptDelivery, type ClaimedDelivery } from './deliver.js';
+import { DEFAULT_RETRY_SCHEDULE } from './retry.js';
 
 export interface WorkerOptions {
   /** Global in-flight bound for this worker. Default 10. */
@@ -15,6 +16,8 @@ export interface WorkerOptions {
   reaperIntervalMs?: number;
   /** Identifies this worker in locked_by. Default worker-<uuid>. */
   workerId?: string;
+  /** §3.3 retry schedule in ms. Default 10s → 30s → 2m → 10m → 1h. */
+  retrySchedule?: number[];
 }
 
 export interface HarkaraWorker {
@@ -29,6 +32,7 @@ interface ResolvedOptions {
   visibilityTimeoutMs: number;
   reaperIntervalMs: number;
   workerId: string;
+  retrySchedule: readonly number[];
 }
 
 /**
@@ -44,7 +48,11 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
     visibilityTimeoutMs: options.visibilityTimeoutMs ?? 60_000,
     reaperIntervalMs: options.reaperIntervalMs ?? 10_000,
     workerId: options.workerId ?? `worker-${randomUUID()}`,
+    retrySchedule: options.retrySchedule ?? DEFAULT_RETRY_SCHEDULE,
   };
+  if (opts.retrySchedule.length === 0) {
+    throw new Error('harkara.startWorker: retrySchedule must have at least one step');
+  }
   // A lock must never expire while its attempt can still legally be running
   // — that would manufacture §8.3 duplicates on every slow response.
   if (opts.visibilityTimeoutMs < 2 * opts.attemptTimeoutMs) {
@@ -77,7 +85,7 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
         }
 
         for (const delivery of claimed) {
-          const attempt = attemptDelivery(pool, delivery, opts.attemptTimeoutMs)
+          const attempt = attemptDelivery(pool, delivery, opts.attemptTimeoutMs, opts.retrySchedule)
             .catch(() => undefined) // recording failed — the reaper will recover the claim
             .finally(() => inFlight.delete(attempt));
           inFlight.add(attempt);
