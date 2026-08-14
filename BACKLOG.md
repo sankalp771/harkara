@@ -25,11 +25,10 @@ Format: `- [area] idea — why it might matter`
   endpoint's config-blocked deliveries — fix-triggers-resume (Phase 5
   rider 1: kills the up-to-1h resume-latency wart without multiplying
   refusal rows; lands with the future secrets/registration API)
-  (config-error bucket promoted to §3.2 on 2026-08-15 — Phase 5, ruled
-  never-dead with frozen schedule position)
 
-(refusals × breaker ruled on 2026-08-15 — Phase 6 T1, refusals never
-feed the window; see Rejected below)
+(config-error bucket promoted to §3.2 on 2026-08-15 — Phase 5, ruled
+never-dead with frozen schedule position; refusals × breaker ruled on
+2026-08-15 — Phase 6 T1, refusals never feed the window; see Rejected)
 
 - [send] §2.4 key reuse with mismatched payload — today Harkara silently
   returns the original message; Stripe treats it as an explicit error,
