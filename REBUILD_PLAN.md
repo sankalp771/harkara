@@ -125,8 +125,14 @@ mandatory.
 ## Phase 7 — SSRF guard (§9)
 
 Resolve → reject private/loopback/link-local/metadata ranges → pin the
-vetted IP for the actual request → no cross-origin redirects → byte cap and
-total-time cap on body read → HTTPS default.
+vetted IP for the actual request → re-vet every redirect hop (§9.2) →
+byte cap and total-time cap on body read → HTTPS default.
+
+Requirement from the Phase 3 review: the byte cap is enforced DURING the
+streamed read, not by truncating after buffering — Phase 3's interim
+`response.text().slice(4096)` still buffers a hostile-sized body in
+memory before slicing; Phase 7 replaces it with a reader that aborts at
+the cap.
 
 Tests: 169.254.169.254 rejected at registration AND at delivery time;
 DNS-rebind simulation (hostname resolving to public then private) blocked;

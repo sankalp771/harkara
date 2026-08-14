@@ -32,6 +32,9 @@ Format: `- [area] idea — why it might matter`
   index health, and worker liveness against the host's Postgres
 - [observability] emit delivery lifecycle events (attempt, dead, breaker
   state change) via an EventEmitter so hosts can wire their own metrics
+- [docs] no "usable now" claim anywhere until Phase 5 lands — the interim
+  uniform 5s retry has no dead-end, so a permanently failing endpoint
+  retries forever; Phase 5 is a hard prerequisite for real traffic
 - [docs] serverless caveat — the worker loop assumes a long-lived process;
   document that Lambda-style hosts need a pinned worker or scheduled runner
 
