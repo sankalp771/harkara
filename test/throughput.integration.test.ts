@@ -43,6 +43,14 @@ describe('phase 3 throughput: two workers, 10k deliveries, zero double-claims', 
        SELECT $1 || '/e' || i, '{}' FROM generate_series(1, $2::int) i`,
       [receiver.url, ENDPOINTS],
     );
+    // §4.1/T1 (Phase 4): unsecreted endpoints are refused delivery.
+    // Deterministic core-SQL secret (no pgcrypto needed) — load test, not
+    // a crypto test; the oracle tests own signature correctness.
+    await pool!.query(
+      `INSERT INTO endpoint_secrets (endpoint_id, secret)
+       SELECT id, 'whsec_' || encode(convert_to('throughput-load-secret', 'UTF8'), 'base64')
+       FROM endpoints`,
+    );
     await pool!.query(
       `INSERT INTO messages (event_type, payload)
        SELECT 'load.test', '{"i":' || i || '}' FROM generate_series(1, $1::int) i`,

@@ -21,6 +21,10 @@ Format: `- [area] idea — why it might matter`
 - [endpoints] firehose endpoints (one endpoint receiving events across all
   tenants) — rejected for v1 by §1a.4's strict tenant equality; would need
   its own contract clause and an explicit opt-in flag if ever wanted
+- [P5] classify "no active secret" — config-error retry policy. It is not
+  transient (a 5s retry can't add a secret) and not permanent (a human
+  fixing config resolves it), so Phase 5's retryable/non-retryable split
+  needs a third bucket or a deliberate ruling — decided, not defaulted
 - [send] §2.4 key reuse with mismatched payload — today Harkara silently
   returns the original message; Stripe treats it as an explicit error,
   which catches real caller bugs (key derived from the wrong variable).

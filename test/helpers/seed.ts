@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 
 /** Direct-SQL seeding for worker tests — precise control over row state
@@ -16,6 +17,12 @@ export async function seedEndpoint(
     `INSERT INTO endpoints (url, event_types) VALUES ($1, $2) RETURNING id`,
     [url, eventTypes],
   );
+  // §4.1 (Phase 4, T1 ruling): endpoints without an active secret are
+  // refused delivery — every delivery-test endpoint needs one.
+  await pool.query(`INSERT INTO endpoint_secrets (endpoint_id, secret) VALUES ($1, $2)`, [
+    rows[0]!.id,
+    `whsec_${randomBytes(24).toString('base64')}`,
+  ]);
   return rows[0]!.id;
 }
 

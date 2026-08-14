@@ -131,6 +131,7 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
     attempt_count: number;
     url: string;
     payload: string;
+    secrets: string[];
   }>(
     `WITH claimed AS (
        UPDATE deliveries SET status = 'delivering', locked_at = now(), locked_by = $1
@@ -157,7 +158,13 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
        )
        RETURNING id, message_id, endpoint_id, attempt_count
      )
-     SELECT c.id, c.message_id, c.endpoint_id, c.attempt_count, e.url, m.payload
+     SELECT c.id, c.message_id, c.endpoint_id, c.attempt_count, e.url, m.payload,
+            COALESCE(
+              (SELECT array_agg(s.secret ORDER BY s.created_at, s.id)
+               FROM endpoint_secrets s
+               WHERE s.endpoint_id = c.endpoint_id AND s.revoked_at IS NULL),
+              '{}'
+            ) AS secrets
      FROM claimed c
      JOIN endpoints e ON e.id = c.endpoint_id
      JOIN messages m ON m.id = c.message_id`,
@@ -170,6 +177,7 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
     attemptCount: r.attempt_count,
     url: r.url,
     payload: r.payload,
+    secrets: r.secrets,
   }));
 }
 
