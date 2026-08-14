@@ -18,7 +18,9 @@ export interface ReceivedRequest {
   respondedAt?: number;
 }
 
-export type Behavior = { status: number; body?: string; delayMs?: number } | 'hang'; // accept the request, never respond
+export type Behavior =
+  | { status: number; body?: string; delayMs?: number; headers?: Record<string, string> }
+  | 'hang'; // accept the request, never respond
 
 export interface Receiver {
   /** Base URL, e.g. http://127.0.0.1:54321 — append a path per endpoint. */
@@ -80,6 +82,9 @@ export async function startReceiver(): Promise<Receiver> {
       }
       const respond = () => {
         res.statusCode = directive.status;
+        for (const [name, value] of Object.entries(directive.headers ?? {})) {
+          res.setHeader(name, value);
+        }
         res.end(directive.body ?? '');
         done();
       };

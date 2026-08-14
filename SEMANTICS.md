@@ -76,10 +76,20 @@ status within the attempt timeout. Everything else is a failure.
 **3.2** Failure classification:
 
 - **Retryable:** 5xx, 429, timeouts, connection errors.
-- **Not retryable:** all other 4xx (the request will be equally wrong
-  tomorrow). These go straight to the dead letter queue.
-- **429 with `Retry-After`:** the header is honored (capped at the maximum
-  backoff step) instead of the default schedule.
+- **Not retryable:** all other statuses, including the rest of 4xx and
+  all 3xx — redirects are not followed (§9.2), so a redirect response
+  means the URL is misconfigured, and the request will be equally wrong
+  tomorrow. These go straight to the dead letter queue.
+- **`Retry-After` on 429 or 503:** the header is honored (capped at the
+  maximum backoff step) instead of the default schedule — the receiver
+  naming its own price is §3.4's mercy principle in header form.
+- **Config errors** (e.g. the endpoint has no active signing secret): no
+  request is sent. The delivery waits at the maximum backoff step and
+  does NOT advance toward dead — the fix is a human act of configuration,
+  and killing the delivery for the operator's mistake would punish the
+  receiver. Each refusal is still recorded as an attempt row (§6.1).
+  Once configuration is fixed, the delivery resumes its normal schedule
+  from where it left off.
 
 **3.3** Default schedule (configurable): 10s → 30s → 2m → 10m → 1h,
 each step with ±20% random jitter to prevent synchronized retry storms.
