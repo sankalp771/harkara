@@ -5,7 +5,9 @@ import type { Pool } from 'pg';
  * (locked_at, created_at, next_attempt_at) that no public API should offer. */
 
 export async function truncateAll(pool: Pool): Promise<void> {
-  await pool.query('TRUNCATE delivery_attempts, deliveries, endpoint_secrets, endpoints, messages');
+  await pool.query(
+    'TRUNCATE delivery_attempts, deliveries, endpoint_breakers, endpoint_secrets, endpoints, messages',
+  );
 }
 
 export async function seedEndpoint(
