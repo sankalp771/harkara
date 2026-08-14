@@ -193,6 +193,22 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-14 — phase-4: Standard Webhooks signing (PR #7)
+
+Every delivery now carries webhook-id / webhook-timestamp /
+webhook-signature, and the acceptance authority is the official
+standardwebhooks package verifying captured wire bytes (oracle rule —
+npm name has no hyphen, the spec/org name does). Rotation proven the
+§4.5 way: two active secrets → one header, two signatures → a verifier
+holding ONLY the old key and one holding ONLY the new key both accept
+the same request. Revocation stops signing immediately. Tamper tests pin
+§4.3 (edited timestamp or body → oracle rejects). T1 ruling live: zero
+active secrets → refusal recorded, never an unsigned request (Phase 5
+owes this a config-error classification — BACKLOG). T2: fresh seal per
+attempt, webhook-id stable across retries. HMAC key = base64-DECODED
+whsec_ payload (the #1 interop mistake, pinned by test). Phase 3
+fixtures gained secrets (§4.1 has no exceptions, tests included).
+
 ### 2026-08-13 — phase-3: worker loop + crash recovery (PR #6)
 
 The hard one. Single-loop worker, claim-and-mark in ONE statement,

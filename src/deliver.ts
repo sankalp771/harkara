@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { webhookHeaders } from './signing.js';
 
 /** §6.1 — response bodies are stored truncated, never whole (CLAUDE.md). */
 const RESPONSE_BODY_CAP = 4096;
@@ -13,6 +14,8 @@ export interface ClaimedDelivery {
   attemptCount: number;
   url: string;
   payload: string;
+  /** Active (unrevoked) signing secrets, oldest first (§4.5). */
+  secrets: string[];
 }
 
 /**
@@ -31,9 +34,18 @@ export async function attemptDelivery(
   let errorText: string | null = null;
 
   try {
+    // T1 ruling: an endpoint with no active secret is REFUSED — §4.1 says
+    // every delivery carries the signature headers, no exceptions, so the
+    // fallback is a recorded failure, never an unsigned request.
+    if (delivery.secrets.length === 0) {
+      throw new Error('no active secret for endpoint — refusing to deliver unsigned (§4.1)');
+    }
     const response = await fetch(delivery.url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...webhookHeaders(delivery.messageId, delivery.payload, delivery.secrets),
+      },
       body: delivery.payload,
       signal: AbortSignal.timeout(attemptTimeoutMs),
       redirect: 'manual', // hardened properly in Phase 7 (§9.2)
