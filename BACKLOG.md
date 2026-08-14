@@ -31,6 +31,7 @@ Format: `- [area] idea — why it might matter`
 
 (config-error bucket promoted to §3.2 on 2026-08-15 — Phase 5, ruled
 never-dead with frozen schedule position)
+
 - [send] §2.4 key reuse with mismatched payload — today Harkara silently
   returns the original message; Stripe treats it as an explicit error,
   which catches real caller bugs (key derived from the wrong variable).
