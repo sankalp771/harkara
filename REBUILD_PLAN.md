@@ -193,6 +193,24 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-15 — phase-5: retries + DLQ + replay (PR #8)
+
+Phase 3's interim scaffolding retired: §3.2 classification (4xx/3xx →
+dead instantly; 5xx/429/timeouts follow the §3.3 schedule with ±20%
+jitter to exhaustion), Retry-After honored on 429 AND 503 verbatim but
+capped (T2 extension), and the config-error bucket ruled never-dead with
+frozen schedule position (T1 + riders: refusal rows carry NULL
+attempt_number; fix-triggers-resume queued for the secrets API; P6 must
+rule on refusals × breaker). Migration 3: dead_at + partial indexes,
+attempt_number nullable. Replay API (§6.2/6.3): per-delivery,
+per-endpoint, time-range on dead_at — fresh delivery, same webhook-id,
+fresh seal (oracle-verified), dead rows parked untouched, never
+automatic (asserted: dead + running worker + time = zero traffic). The
+replay arbiter is Phase 1's partial unique index — the old repo's broken
+constraint is now load-bearing for the feature it used to prevent.
+"No usable-now claim" caveat lifted: failing endpoints now cost
+schedule+1 attempts, not infinity.
+
 ### 2026-08-14 — phase-4: Standard Webhooks signing (PR #7)
 
 Every delivery now carries webhook-id / webhook-timestamp /

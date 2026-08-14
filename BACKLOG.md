@@ -21,10 +21,17 @@ Format: `- [area] idea — why it might matter`
 - [endpoints] firehose endpoints (one endpoint receiving events across all
   tenants) — rejected for v1 by §1a.4's strict tenant equality; would need
   its own contract clause and an explicit opt-in flag if ever wanted
-- [P5] classify "no active secret" — config-error retry policy. It is not
-  transient (a 5s retry can't add a secret) and not permanent (a human
-  fixing config resolves it), so Phase 5's retryable/non-retryable split
-  needs a third bucket or a deliberate ruling — decided, not defaulted
+- [secrets-api] creating a secret resets next_attempt_at = now for that
+  endpoint's config-blocked deliveries — fix-triggers-resume (Phase 5
+  rider 1: kills the up-to-1h resume-latency wart without multiplying
+  refusal rows; lands with the future secrets/registration API)
+- [P6] the breaker plan must explicitly rule whether config-refusal
+  attempt rows feed the failure-rate window (Phase 5 rider 3 — possibly
+  desirable, but decided, not emergent)
+
+(config-error bucket promoted to §3.2 on 2026-08-15 — Phase 5, ruled
+never-dead with frozen schedule position)
+
 - [send] §2.4 key reuse with mismatched payload — today Harkara silently
   returns the original message; Stripe treats it as an explicit error,
   which catches real caller bugs (key derived from the wrong variable).
@@ -36,9 +43,6 @@ Format: `- [area] idea — why it might matter`
   index health, and worker liveness against the host's Postgres
 - [observability] emit delivery lifecycle events (attempt, dead, breaker
   state change) via an EventEmitter so hosts can wire their own metrics
-- [docs] no "usable now" claim anywhere until Phase 5 lands — the interim
-  uniform 5s retry has no dead-end, so a permanently failing endpoint
-  retries forever; Phase 5 is a hard prerequisite for real traffic
 - [docs] serverless caveat — the worker loop assumes a long-lived process;
   document that Lambda-style hosts need a pinned worker or scheduled runner
 
