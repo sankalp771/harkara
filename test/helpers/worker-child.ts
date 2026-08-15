@@ -22,6 +22,7 @@ harkara.startWorker({
   pollIntervalMs: 100,
   attemptTimeoutMs: Number(process.env.ATTEMPT_TIMEOUT_MS ?? 30_000),
   visibilityTimeoutMs: Number(process.env.VISIBILITY_TIMEOUT_MS ?? 60_000),
+  ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
 });
 
 process.stdout.write('READY\n');

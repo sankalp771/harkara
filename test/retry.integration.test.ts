@@ -38,7 +38,12 @@ describe('phase 5 retries and the DLQ', () => {
   }
 
   function runWorker(opts: WorkerOptions = {}): HarkaraWorker {
-    const w = harkara.startWorker({ pollIntervalMs: 25, reaperIntervalMs: 60_000, ...opts });
+    const w = harkara.startWorker({
+      pollIntervalMs: 25,
+      reaperIntervalMs: 60_000,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
+      ...opts,
+    });
     workers.push(w);
     return w;
   }

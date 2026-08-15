@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { applyOutcome, type BreakerConfig, type BreakerRow, type BreakerState } from './breaker.js';
+import { pinnedRequest, type EgressAgents, type SsrfOptions } from './egress.js';
 import {
   classify,
   configDelayMs,
@@ -9,7 +10,8 @@ import {
 } from './retry.js';
 import { webhookHeaders } from './signing.js';
 
-/** §6.1 — response bodies are stored truncated, never whole (CLAUDE.md). */
+/** §6.1/§9.2 — response bodies are stored truncated, never whole; since
+ * Phase 7 this is the READ cap too — the socket dies at this many bytes. */
 const RESPONSE_BODY_CAP = 4096;
 
 export interface ClaimedDelivery {
@@ -34,6 +36,7 @@ export async function attemptDelivery(
   attemptTimeoutMs: number,
   retrySchedule: readonly number[],
   breaker: BreakerConfig,
+  egress: { ssrf: SsrfOptions; agents: EgressAgents },
 ): Promise<void> {
   const startedAt = Date.now();
   let statusCode: number | null = null;
@@ -48,31 +51,35 @@ export async function attemptDelivery(
     kind = 'config';
     errorText = 'no active secret for endpoint — refusing to deliver unsigned (§4.1)';
   } else {
-    try {
-      const response = await fetch(delivery.url, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...webhookHeaders(delivery.messageId, delivery.payload, delivery.secrets),
-        },
-        body: delivery.payload,
-        signal: AbortSignal.timeout(attemptTimeoutMs),
-        redirect: 'manual', // hardened properly in Phase 7 (§9.2)
-      });
-      statusCode = response.status;
-      responseBody = (await response.text()).slice(0, RESPONSE_BODY_CAP);
+    // §9 — resolve → vet → pin; redirects never followed (3xx is
+    // terminal, §3.2); byte cap during the streamed read; one deadline
+    // covering connect → headers → body.
+    const result = await pinnedRequest(delivery.url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...webhookHeaders(delivery.messageId, delivery.payload, delivery.secrets),
+      },
+      body: delivery.payload,
+      timeoutMs: attemptTimeoutMs,
+      byteCap: RESPONSE_BODY_CAP,
+      ssrf: egress.ssrf,
+      agents: egress.agents,
+    });
+    if (result.kind === 'http') {
+      statusCode = result.statusCode;
+      responseBody = result.body;
       if (statusCode === 429 || statusCode === 503) {
         // §3.2 — the receiver names its price (capped later by nextDelayMs).
-        retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+        retryAfterMs = parseRetryAfter(result.retryAfter);
       }
-    } catch (err) {
+    } else if (result.kind === 'network') {
       kind = 'network';
-      errorText =
-        err instanceof Error
-          ? err.cause instanceof Error
-            ? `${err.message}: ${err.cause.message}`
-            : err.message
-          : String(err);
+      errorText = result.message;
+    } else {
+      // §9.1/§9.3 egress refusal — same config bucket as no-secret.
+      kind = 'config';
+      errorText = result.message;
     }
   }
   const latencyMs = Date.now() - startedAt;

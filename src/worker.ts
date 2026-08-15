@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { DEFAULT_BREAKER, type BreakerConfig } from './breaker.js';
 import { attemptDelivery, type ClaimedDelivery } from './deliver.js';
+import { createAgents, destroyAgents, type SsrfOptions } from './egress.js';
 import { DEFAULT_RETRY_SCHEDULE } from './retry.js';
 
 export interface WorkerOptions {
@@ -21,6 +22,8 @@ export interface WorkerOptions {
   retrySchedule?: number[];
   /** §5.2 circuit breaker thresholds. Defaults are the contract's. */
   breaker?: Partial<BreakerConfig>;
+  /** §9.3 egress opt-ins. Both default false: https-only, public targets only. */
+  ssrf?: Partial<SsrfOptions>;
 }
 
 export interface HarkaraWorker {
@@ -37,6 +40,7 @@ interface ResolvedOptions {
   workerId: string;
   retrySchedule: readonly number[];
   breaker: BreakerConfig;
+  ssrf: SsrfOptions;
 }
 
 /**
@@ -54,6 +58,7 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
     workerId: options.workerId ?? `worker-${randomUUID()}`,
     retrySchedule: options.retrySchedule ?? DEFAULT_RETRY_SCHEDULE,
     breaker: { ...DEFAULT_BREAKER, ...options.breaker },
+    ssrf: { allowInsecureHttp: false, allowPrivateAddresses: false, ...options.ssrf },
   };
   if (opts.retrySchedule.length === 0) {
     throw new Error('harkara.startWorker: retrySchedule must have at least one step');
@@ -81,6 +86,9 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
   const isStopping = () => stopping;
   let wake: (() => void) | undefined;
   const inFlight = new Set<Promise<void>>();
+  // §9.2 keep-alive pools, per worker: a pooled socket was vetted at
+  // connect; destroyed on stop so a host app can exit cleanly.
+  const agents = createAgents();
 
   const loop = (async () => {
     let lastReap = 0;
@@ -105,6 +113,7 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
             opts.attemptTimeoutMs,
             opts.retrySchedule,
             opts.breaker,
+            { ssrf: opts.ssrf, agents },
           )
             .catch(() => undefined) // recording failed — the reaper will recover the claim
             .finally(() => inFlight.delete(attempt));
@@ -120,6 +129,7 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
       }
     }
     await Promise.allSettled([...inFlight]);
+    destroyAgents(agents);
   })();
 
   return {

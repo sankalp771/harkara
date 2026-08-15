@@ -15,6 +15,11 @@ Format: `- [area] idea — why it might matter`
   ON DELETE, so any endpoint with history can never be deleted (FK
   violation); probably right (history is forensic, §6.1) but then the API
   needs disable-not-delete — must be a written decision, not an FK accident
+- [endpoints] the future endpoints/registration API must vet URLs (§9.1)
+  at registration time for fast operator feedback — v1 has no
+  registration API, so enforcement is delivery-time only (Phase 7 T5
+  scope honesty; REBUILD_PLAN's "rejected at registration AND delivery"
+  needs the API to exist first)
 
 (idempotency key promoted to §2.4 on 2026-08-11 — ships in v1)
 
@@ -47,6 +52,10 @@ never-dead with frozen schedule position; refusals × breaker ruled on
   breaker docs — during a long outage one delivery absorbs the half-open
   probes and may die into the DLQ so the rest keep their budget (§5.3/T3);
   maintainer directive at Phase 6 approval
+- [docs] the §9 docs must say 169.254.169.254 is blocked as a LINK-LOCAL
+  RANGE member, never as a special-cased address — so the range check
+  can't be "optimized" into an IP list (maintainer rider at Phase 7
+  approval; the pure test pins a range neighbor for the same reason)
 
 ## Rejected (kept so we don't re-litigate)
 

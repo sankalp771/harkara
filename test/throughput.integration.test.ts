@@ -62,9 +62,10 @@ describe('phase 3 throughput: two workers, 10k deliveries, zero double-claims', 
     );
 
     const harkara = createHarkara({ pool: pool! });
+    const ssrf = { allowInsecureHttp: true, allowPrivateAddresses: true };
     workers.push(
-      harkara.startWorker({ workerId: 'w-1', concurrency: 25, pollIntervalMs: 20 }),
-      harkara.startWorker({ workerId: 'w-2', concurrency: 25, pollIntervalMs: 20 }),
+      harkara.startWorker({ workerId: 'w-1', concurrency: 25, pollIntervalMs: 20, ssrf }),
+      harkara.startWorker({ workerId: 'w-2', concurrency: 25, pollIntervalMs: 20, ssrf }),
     );
 
     await waitUntil(

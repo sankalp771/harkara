@@ -49,6 +49,7 @@ describe('phase 3 reaper', () => {
       reaperIntervalMs: 100,
       attemptTimeoutMs: 1_000,
       visibilityTimeoutMs: 2_000,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
     });
     workers.push(w);
 
@@ -94,6 +95,7 @@ describe('phase 3 reaper', () => {
       reaperIntervalMs: 100,
       attemptTimeoutMs: 2_000,
       visibilityTimeoutMs: 5_000,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
     });
     workers.push(w);
 

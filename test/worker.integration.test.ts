@@ -37,7 +37,12 @@ describe('phase 3 worker loop', () => {
   });
 
   function startWorker(opts: Parameters<Harkara['startWorker']>[0] = {}): HarkaraWorker {
-    const w = harkara.startWorker({ pollIntervalMs: 50, reaperIntervalMs: 60_000, ...opts });
+    const w = harkara.startWorker({
+      pollIntervalMs: 50,
+      reaperIntervalMs: 60_000,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
+      ...opts,
+    });
     workers.push(w);
     return w;
   }
