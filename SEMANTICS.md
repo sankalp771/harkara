@@ -83,8 +83,8 @@ status within the attempt timeout. Everything else is a failure.
 - **`Retry-After` on 429 or 503:** the header is honored (capped at the
   maximum backoff step) instead of the default schedule — the receiver
   naming its own price is §3.4's mercy principle in header form.
-- **Config errors** (e.g. the endpoint has no active signing secret): no
-  request is sent. The delivery waits at the maximum backoff step and
+- **Config errors** (e.g. the endpoint has no active signing secret, or
+  its URL is refused by the egress guard, §9): no request is sent. The delivery waits at the maximum backoff step and
   does NOT advance toward dead — the fix is a human act of configuration,
   and killing the delivery for the operator's mistake would punish the
   receiver. Each refusal is still recorded as an attempt row (§6.1).
@@ -226,14 +226,25 @@ outbound HTTP client. Before any attempt, Harkara resolves the hostname and
 rejects targets in private, loopback, and link-local ranges (including
 cloud metadata addresses).
 
-**9.2** The connection is pinned to the vetted IP (DNS rebinding defense).
-Every followed redirect hop is treated as a fresh request: re-resolved,
-re-vetted against the blocklist, and re-pinned, exactly like the first.
-Hop count is capped. Response bodies are read with a hard byte cap and a
-total-time cap covering the body, not just the headers.
+**9.2** The connection is pinned to the vetted IP: the hostname is
+resolved exactly once per attempt, every returned address must pass the
+blocklist (one bad record poisons the whole set), and the socket
+connects only to a vetted address while TLS identity is still verified
+against the hostname. There is no second resolution for DNS rebinding
+to win. Redirects are never followed — a 3xx response is terminal
+(§3.2), so no hop can route the request somewhere the vetting never
+saw. Response bodies are read with a hard byte cap enforced DURING the
+streamed read (the connection is destroyed at the cap, never buffered
+past it), and the attempt timeout covers the body, not just the
+headers. A 2xx whose body trips either cap is still a delivered
+webhook — the status line decides the outcome; the caps protect
+resources.
 
 **9.3** HTTPS is required by default; plain HTTP is an explicit opt-in
-intended for local development.
+intended for local development. Delivery to private, loopback, or
+link-local addresses is likewise an explicit opt-in, independent of the
+HTTP opt-in — internal receivers behind real HTTPS are legitimate. Both
+opt-ins default to off.
 
 ## 10. Non-goals
 

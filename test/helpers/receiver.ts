@@ -16,10 +16,17 @@ export interface ReceivedRequest {
   arrivedAt: number;
   /** ms timestamp when the response finished (undefined while hanging) */
   respondedAt?: number;
+  /** true when the CLIENT destroyed the socket before the response
+   * finished — how Phase 7 observes the streamed byte cap from outside. */
+  aborted?: boolean;
 }
 
 export type Behavior =
-  { status: number; body?: string; delayMs?: number; headers?: Record<string, string> } | 'hang'; // accept the request, never respond
+  | { status: number; body?: string; delayMs?: number; headers?: Record<string, string> }
+  // §9.2 tests: send headers, then write chunkBytes every intervalMs
+  // forever — only the client's caps can end this response.
+  | { status: number; drip: { chunkBytes: number; intervalMs: number } }
+  | 'hang'; // accept the request, never respond
 
 export interface Receiver {
   /** Base URL, e.g. http://127.0.0.1:54321 — append a path per endpoint. */
@@ -79,6 +86,21 @@ export async function startReceiver(): Promise<Receiver> {
         // In-flight count intentionally stays raised.
         return;
       }
+      if ('drip' in directive) {
+        res.writeHead(directive.status);
+        const timer = setInterval(() => {
+          res.write(Buffer.alloc(directive.drip.chunkBytes, 0x78));
+        }, directive.drip.intervalMs);
+        res.on('close', () => {
+          clearInterval(timer);
+          record.aborted = !res.writableFinished;
+          done();
+        });
+        return;
+      }
+      res.on('close', () => {
+        if (!res.writableFinished) record.aborted = true;
+      });
       const respond = () => {
         res.statusCode = directive.status;
         for (const [name, value] of Object.entries(directive.headers ?? {})) {

@@ -41,6 +41,7 @@ describe('phase 5 replay', () => {
       pollIntervalMs: 25,
       reaperIntervalMs: 60_000,
       retrySchedule: [100],
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
     });
     workers.push(w);
     return w;

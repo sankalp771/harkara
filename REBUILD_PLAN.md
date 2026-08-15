@@ -193,6 +193,52 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-15 — phase-7: SSRF guard (PR #10)
+
+§9 live, zero new dependencies and zero schema changes. The headline is
+the ⚠ FLAG: the plan caught §9.2 ("every followed redirect hop is
+re-vetted") contradicting §3.2's Phase 5 ruling (redirects never
+followed, 3xx → dead) — the contract review process caught its own
+author, and the maintainer ratified the safer resolution: **redirects
+stay dead**, §9.2 rewritten so no dormant clause invites a future
+"helpful" redirect follower. T1–T5 ratified: pin via ONE resolution
+per attempt (node:http/https dialing the vetted address while Host/SNI/
+cert stay on the hostname — the rebind TOCTOU window is structurally
+absent, and the test proves `resolver` was called exactly once against
+a .invalid hostname that real DNS cannot serve); all-or-nothing DNS
+answer vetting (one poisoned record kills the set); egress refusals
+join the §3.2 config bucket (no wire → never dead, NULL attempt_number,
+breaker-invisible) while NXDOMAIN stays network-retryable; the status
+line decides while the caps protect resources (a 200-then-drip is
+DELIVERED with a truncated body — retrying it would manufacture the
+§1.2 duplicates the contract promises are rare); two independent
+opt-ins (allowInsecureHttp §9.3, allowPrivateAddresses) both default
+off — every pre-Phase-7 test now runs with them ON, which is itself
+the proof the opt-ins restore delivery. Riders: NAT64 64:ff9b::/96
+unwraps like v4-mapped; metadata blocked as a link-local RANGE member
+(the pure test pins 169.254.0.1 alongside 169.254.169.254 so the range
+check can never become an IP list). Byte cap moved from
+truncate-after-buffer to destroy-at-4096-DURING-read, observed from
+outside: the receiver sees its own socket die mid-write. Kicked to
+BACKLOG: registration-time vetting (needs the future endpoints API).
+
+Second bug story, same phase: the 10k throughput test failed the new
+client once — 1 duplicate attempt in 10,000. The keep-alive pool's
+stale-socket race: a pooled socket idles past the receiver's 5s
+keep-alive timeout, the server closes it, the next POST rides the
+corpse, gets ECONNRESET before any response byte, and the "network
+failure" retry writes a second attempt row. Fix is Node's own
+documented pattern with one hard-won amendment: retry exactly once when
+the socket was REUSED, the error is a reset, and zero response bytes
+arrived (the receiver provably never saw the request, so the retry
+cannot double-deliver) — and the retry must BYPASS the pool, because
+the first fix retried through it and the LIFO pool handed over the
+next corpse in the row ('connection reset on reused socket, twice', in
+the actual attempt row). A fresh socket is structurally never stale.
+Three phases running, the 10k test has now caught four different
+concurrency bugs (EvalPlanQual double-claim, tsx orphan, and both
+halves of the stale-socket story).
+
 ### 2026-08-15 — phase-6: circuit breaker (PR #9)
 
 §5.2/§5.3 live: per-endpoint three-state breaker, state shared through a

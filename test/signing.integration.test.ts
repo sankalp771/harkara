@@ -49,7 +49,11 @@ describe('phase 4 signing on the wire', () => {
   }
 
   function runWorker(): HarkaraWorker {
-    const w = harkara.startWorker({ pollIntervalMs: 50, reaperIntervalMs: 60_000 });
+    const w = harkara.startWorker({
+      pollIntervalMs: 50,
+      reaperIntervalMs: 60_000,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
+    });
     workers.push(w);
     return w;
   }

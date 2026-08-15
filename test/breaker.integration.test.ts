@@ -46,6 +46,7 @@ describe('phase 6 circuit breaker', () => {
       reaperIntervalMs: 60_000,
       retrySchedule: Array<number>(8).fill(100),
       breaker: BREAKER,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
       ...overrides,
     });
     workers.push(w);

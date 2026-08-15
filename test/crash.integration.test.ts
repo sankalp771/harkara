@@ -105,6 +105,7 @@ describe('phase 3 crash recovery (§8.3)', () => {
       reaperIntervalMs: 100,
       attemptTimeoutMs: 500,
       visibilityTimeoutMs: 1_500,
+      ssrf: { allowInsecureHttp: true, allowPrivateAddresses: true },
     });
 
     await waitUntil(

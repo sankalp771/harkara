@@ -24,7 +24,7 @@ against real Postgres in CI:
 - [x] **Phase 4 — Signing**: Standard Webhooks, verified by the official library as the test oracle
 - [x] **Phase 5 — Retries + DLQ + replay**: classification, jittered schedule, `Retry-After`, dead letter parking, replay by delivery/endpoint/time-range
 - [x] **Phase 6 — Circuit breaker**: per-endpoint, failure-rate tripped, exactly-one-probe half-open, retry clocks suspended while open
-- [ ] **Phase 7 — SSRF guard**: resolve → vet → pin, per-hop redirect re-vetting, streamed byte caps
+- [x] **Phase 7 — SSRF guard**: resolve → vet → pin (one lookup, no rebind window), https by default, byte cap kills the read mid-stream
 - [ ] **Phase 8 — Ordering** _(optional for v1)_
 - [ ] **Phase 9 — Ship**: npm publish, docs, launch
 
