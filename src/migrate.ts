@@ -34,6 +34,12 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<stri
     dir,
     direction: 'up',
     migrationsTable: MIGRATIONS_TABLE,
+    // Setting ignorePattern REPLACES node-pg-migrate's default dotfile
+    // ignore, so it must be re-included ('\\..*' — .gitkeep). The rest:
+    // dist/migrations holds compiled .js NEXT TO .d.ts declarations,
+    // and the declarations are not migrations (the tarball smoke test
+    // caught node-pg-migrate trying to run one).
+    ignorePattern: '\\..*|.*\\.d\\.ts|.*\\.map',
     log: options.log ?? (() => undefined),
   });
   return applied.map((m) => m.name);

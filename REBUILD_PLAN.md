@@ -193,6 +193,42 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-16 — phase-9: ship (PR #12)
+
+The package goes public: 0.1.0, ESM + declarations out of
+tsconfig.build.json, `pg` moved to peerDependencies (rider 1 — the
+host's Pool flows through harkara, so two pg copies is the least
+debuggable class of bug; node-pg-migrate peers on pg too, the chain
+composes), engines node>=20 with the CI matrix now testing BOTH floors
+(node 20/22 × PG 15/17 — the standing no-silent-floors ruling applied
+to the runtime too). T1: hosts apply schema via the new public
+`runMigrations()` into harkara's OWN `harkara_migrations` ledger —
+never node-pg-migrate's default table, so a host's `migrate down` can
+never roll back harkara's tables by position; pinned by a fresh-database
+test with the negative-space assertion (pgmigrations must NOT exist)
+and an idempotence re-run. The test helper now rides the public
+function: the shipped path IS the tested path.
+
+Docs: docs/contract/ is GENERATED from SEMANTICS.md
+(scripts/build-docs.mjs) and CI fails on drift — "generated from the
+contract" is a machine invariant. Four BACKLOG riders discharged into
+docs/guides/operations.md (the probe-martyr, the config-parked elder,
+metadata-as-a-range-member, serverless) and §2.3's promised dedup
+example landed as TESTED code: test/receiver-dedup.integration.test.ts
+reproduces the §1.2 crash window deliberately and proves two wire
+requests + one processing + both 2xx with the exact snippet the docs
+tell receivers to paste. README rewritten as the product page
+(quickstart, dedup snippet, honest comparison that recommends Svix by
+name for hosted needs); CHANGELOG 0.1.0.
+
+The smoke test earned its keep in its first minute: `npm pack` →
+install into a scratch project → deliver one signed webhook found
+node-pg-migrate treating dist/migrations' .d.ts DECLARATIONS as
+migration files — invisible to every repo test, fatal to every real
+install. ignorePattern fix; smoke now runs in CI (rider 3), so "the
+tarball delivers a real webhook" is checked on every matrix cell.
+Publish itself is the maintainer's act: npm publish + git tag v0.1.0.
+
 ### 2026-08-15 — phase-8: ordering (PR #11)
 
 §7 live: `orderingKey` on send(), denormalized write-once onto

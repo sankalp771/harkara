@@ -39,7 +39,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm run build",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run lint && npm run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

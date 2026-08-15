@@ -67,13 +67,24 @@ describe('phase 9 receiver dedup (the §2.3 copy-paste example)', () => {
       });
     });
     // ————————————————————————————————————————————————————————————————
-    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
-    receiverUrl = `http://127.0.0.1:${String((server!.address() as AddressInfo).port)}`;
+    await new Promise<void>((resolve) => {
+      server!.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address() as AddressInfo;
+    receiverUrl = `http://127.0.0.1:${String(address.port)}`;
   }, 60_000);
 
   afterAll(async () => {
     while (workers.length > 0) await workers.pop()?.stop();
-    await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
+    await new Promise<void>((resolve) => {
+      if (server) {
+        server.close(() => {
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
     await pool?.query(`DROP TABLE IF EXISTS processed_webhooks`);
     if (pool) await truncateAll(pool);
     await pool?.end();
