@@ -229,6 +229,19 @@ install. ignorePattern fix; smoke now runs in CI (rider 3), so "the
 tarball delivers a real webhook" is checked on every matrix cell.
 Publish itself is the maintainer's act: npm publish + git tag v0.1.0.
 
+Pre-publish addition (maintainer request): the `harkara` bin — banner,
+`version`, and `npx harkara migrate` as the terminal-shaped door to the
+same runMigrations. Pure core (`runCli` with injected IO/runner, 7 unit
+tests); the tarball smoke now also executes the installed bin. Delivery
+stays library-shaped — the CLI carries schema and identity only.
+
+Post-flag fix folded in: the node-20 CI floor could not parse TS
+migration SOURCES (dist was always JS), so the five migrations became
+plain ESM .js via git mv + JSDoc — ⚠ flagged as a collision with the
+never-edit-merged-migrations rule: zero SQL changes, ledger verified
+extension-less ('1_initial-schema') against a live database before
+converting; ts-node left the tree.
+
 ### 2026-08-15 — phase-8: ordering (PR #11)
 
 §7 live: `orderingKey` on send(), denormalized write-once onto

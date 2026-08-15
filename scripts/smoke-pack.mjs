@@ -101,6 +101,10 @@ if (!String(received[0].sig).startsWith('v1,')) throw new Error('smoke: missing 
 console.log('smoke: OK — one signed webhook delivered through the packed tarball');
 `,
   );
+  // The bin must work from a real install too: banner, version, and a
+  // refusal (no DATABASE_URL flag/env here would still exit 0 for help).
+  run('npx --no-install harkara version', scratch);
+  run('npx --no-install harkara help', scratch);
   run('node smoke.mjs', scratch);
 } finally {
   rmSync(scratch, { recursive: true, force: true });

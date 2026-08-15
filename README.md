@@ -28,6 +28,7 @@ import { createHarkara, runMigrations } from 'harkara';
 
 // 1. Schema — safe on every boot; harkara keeps its own migration
 //    ledger (harkara_migrations), never touching your app's.
+//    (Or from a terminal: `npx harkara migrate`.)
 await runMigrations({ databaseUrl: process.env.DATABASE_URL });
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
