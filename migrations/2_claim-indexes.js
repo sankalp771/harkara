@@ -1,5 +1,3 @@
-import type { MigrationBuilder } from 'node-pg-migrate';
-
 /**
  * Phase 3 — indexes shaped like the claim query actually reads.
  *
@@ -12,7 +10,8 @@ import type { MigrationBuilder } from 'node-pg-migrate';
 
 export const shorthands = undefined;
 
-export function up(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function up(pgm) {
   // LATERAL: oldest due pending delivery for one endpoint.
   pgm.sql(`
     CREATE INDEX deliveries_pending_by_endpoint
@@ -29,7 +28,8 @@ export function up(pgm: MigrationBuilder): void {
   pgm.sql(`DROP INDEX deliveries_claimable`);
 }
 
-export function down(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function down(pgm) {
   pgm.sql(`
     CREATE INDEX deliveries_claimable
     ON deliveries (next_attempt_at)

@@ -1,5 +1,3 @@
-import type { MigrationBuilder } from 'node-pg-migrate';
-
 /**
  * Phase 6 — §5.2/§5.3 circuit breaker state (plan T4/T5).
  *
@@ -15,7 +13,8 @@ import type { MigrationBuilder } from 'node-pg-migrate';
 
 export const shorthands = undefined;
 
-export function up(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function up(pgm) {
   pgm.createTable('endpoint_breakers', {
     endpoint_id: {
       type: 'uuid',
@@ -41,6 +40,7 @@ export function up(pgm: MigrationBuilder): void {
   });
 }
 
-export function down(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function down(pgm) {
   pgm.dropTable('endpoint_breakers');
 }
