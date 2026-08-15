@@ -12,6 +12,9 @@ export interface SendEvent {
   tenantId?: string;
   /** §2.4 — a resend with the same key returns the original message. */
   idempotencyKey?: string;
+  /** §7 — messages sharing a key deliver to each endpoint in acceptance
+   * order (best-effort; §7.2 names the breaks). Omitted = unordered. */
+  orderingKey?: string;
 }
 
 export interface SendOptions {
@@ -53,11 +56,19 @@ export async function send(
 
   const tenantId = event.tenantId ?? null;
   const idempotencyKey = event.idempotencyKey ?? null;
+  const orderingKey = event.orderingKey ?? null;
 
   if (options?.tx) {
     // Caller's transaction: no BEGIN, no COMMIT, no acknowledgment of our
     // own — acceptance is their COMMIT (§1.3).
-    return insertMessageAndFanOut(options.tx, event.type, payload, tenantId, idempotencyKey);
+    return insertMessageAndFanOut(
+      options.tx,
+      event.type,
+      payload,
+      tenantId,
+      idempotencyKey,
+      orderingKey,
+    );
   }
 
   const client = await pool.connect();
@@ -69,6 +80,7 @@ export async function send(
       payload,
       tenantId,
       idempotencyKey,
+      orderingKey,
     );
     await client.query('COMMIT');
     return result;
@@ -88,16 +100,17 @@ async function insertMessageAndFanOut(
   payload: string,
   tenantId: string | null,
   idempotencyKey: string | null,
+  orderingKey: string | null,
 ): Promise<SendResult> {
   // Arbiter = the NULLS NOT DISTINCT partial index from Phase 1, so
   // single-tenant (NULL) callers get real §2.4 dedup too.
   const inserted = await client.query<{ id: string }>(
-    `INSERT INTO messages (tenant_id, event_type, payload, idempotency_key)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO messages (tenant_id, event_type, payload, idempotency_key, ordering_key)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL
      DO NOTHING
      RETURNING id`,
-    [tenantId, eventType, payload, idempotencyKey],
+    [tenantId, eventType, payload, idempotencyKey, orderingKey],
   );
 
   const insertedRow = inserted.rows[0];
@@ -131,10 +144,12 @@ async function insertMessageAndFanOut(
   // §1a.2 — one delivery per matching endpoint, same transaction as the
   // message insert. Same crash-atomicity as the caller's own data.
   if (matching.length > 0) {
+    // ordering_key rides along as a write-once copy (§7/T2): the claim
+    // guard reads it without ever joining messages.
     await client.query(
-      `INSERT INTO deliveries (message_id, endpoint_id)
-       SELECT $1, unnest($2::uuid[])`,
-      [messageId, matching],
+      `INSERT INTO deliveries (message_id, endpoint_id, ordering_key)
+       SELECT $1, unnest($2::uuid[]), $3`,
+      [messageId, matching, orderingKey],
     );
   }
 

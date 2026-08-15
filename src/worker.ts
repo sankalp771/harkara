@@ -152,14 +152,28 @@ export function startWorker(pool: Pool, options: WorkerOptions = {}): HarkaraWor
  *   version ('delivering' → qual fails → skipped). Locking only the
  *   endpoint left EvalPlanQual free to re-apply a stale IN-set to the
  *   same delivery twice.
- * - `FOR UPDATE OF e SKIP LOCKED` on the ENDPOINT row serializes
- *   overlapping claims per endpoint (§5.1).
+ * - `FOR NO KEY UPDATE OF e SKIP LOCKED` on the ENDPOINT row serializes
+ *   overlapping claims per endpoint (§5.1) — it self-conflicts, which is
+ *   all the exclusivity needed. NOT plain FOR UPDATE: every INSERT into
+ *   deliveries takes an FK KEY SHARE on its endpoint row, and FOR UPDATE
+ *   conflicts with it — a caller holding a send() transaction open would
+ *   stall ALL claims on every matched endpoint until COMMIT (found live
+ *   by the §7.1-scope test holding a send-tx open on purpose).
  * - NOT EXISTS(status='delivering') keeps the endpoint serialized for the
  *   whole attempt; its residual stale-snapshot race (two claims of
  *   DIFFERENT deliveries of one endpoint in the same millisecond) is
  *   closed by demoteCrowdedClaims below.
  * - the LATERAL LIMIT 1 takes at most one delivery per endpoint per batch
  *   (DISTINCT ON cannot be combined with FOR UPDATE).
+ *
+ * §7.1 ordering guard (Phase 8): a keyed delivery is claimable only if
+ * no older sibling (same endpoint + key, lower seq) is still pending or
+ * delivering. NULL keys short-circuit — unordered traffic pays one
+ * column test. Safety under READ COMMITTED is monotonicity: the only
+ * unblock transitions (→ delivered, → dead) never revert, so a stale
+ * snapshot can only over-block for a round, never under-block. An
+ * uncommitted elder is invisible by design — §7.1 scopes the promise to
+ * acceptances that do not overlap.
  *
  * §5.2 breaker gating (Phase 6): a LEFT JOIN on endpoint_breakers — a
  * missing row means closed (T5), read via MVCC with no extra hot-path
@@ -193,6 +207,13 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
            WHERE d.endpoint_id = e.id
              AND d.status = 'pending'
              AND d.next_attempt_at <= now()
+             AND (d.ordering_key IS NULL OR NOT EXISTS (
+               SELECT 1 FROM deliveries older
+               WHERE older.endpoint_id = d.endpoint_id
+                 AND older.ordering_key = d.ordering_key
+                 AND older.seq < d.seq
+                 AND older.status IN ('pending', 'delivering')
+             ))
            ORDER BY d.next_attempt_at
            LIMIT 1
            FOR UPDATE SKIP LOCKED
@@ -207,7 +228,7 @@ async function claimBatch(pool: Pool, workerId: string, limit: number): Promise<
               OR b.state = 'half_open')
          ORDER BY e.id
          LIMIT $2
-         FOR UPDATE OF e SKIP LOCKED
+         FOR NO KEY UPDATE OF e SKIP LOCKED
        )
        RETURNING id, message_id, endpoint_id, attempt_count
      ),

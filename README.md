@@ -25,7 +25,7 @@ against real Postgres in CI:
 - [x] **Phase 5 — Retries + DLQ + replay**: classification, jittered schedule, `Retry-After`, dead letter parking, replay by delivery/endpoint/time-range
 - [x] **Phase 6 — Circuit breaker**: per-endpoint, failure-rate tripped, exactly-one-probe half-open, retry clocks suspended while open
 - [x] **Phase 7 — SSRF guard**: resolve → vet → pin (one lookup, no rebind window), https by default, byte cap kills the read mid-stream
-- [ ] **Phase 8 — Ordering** _(optional for v1)_
+- [x] **Phase 8 — Ordering**: per-key acceptance order, death unblocks loudly, replay rejoins at the back of the queue
 - [ ] **Phase 9 — Ship**: npm publish, docs, launch
 
 ## A taste
