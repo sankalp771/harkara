@@ -55,9 +55,12 @@ export async function replay(pool: Pool, filter: ReplayFilter): Promise<ReplayRe
   // ON CONFLICT rides Phase 1's partial unique index: at most one LIVE
   // delivery per (message, endpoint) — an existing live row blocks the
   // duplicate silently, and dead rows never block a fresh insert.
+  // The fresh row copies the ordering key but takes a NEW seq — §7.2:
+  // a replay re-enters at the BACK of its key's queue, out of order
+  // with the past, in order with everything still queued.
   const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO deliveries (message_id, endpoint_id)
-     SELECT DISTINCT d.message_id, d.endpoint_id
+    `INSERT INTO deliveries (message_id, endpoint_id, ordering_key)
+     SELECT DISTINCT d.message_id, d.endpoint_id, m.ordering_key
      FROM deliveries d
      JOIN messages m ON m.id = d.message_id
      WHERE d.status = 'dead'

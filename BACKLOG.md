@@ -56,6 +56,12 @@ never-dead with frozen schedule position; refusals × breaker ruled on
   RANGE member, never as a special-cased address — so the range check
   can't be "optimized" into an IP list (maintainer rider at Phase 7
   approval; the pure test pins a range neighbor for the same reason)
+- [docs] the ordering docs need a named paragraph next to the
+  probe-martyr: a config-parked elder (§3.2 never-dead) freezes its whole
+  ordering key until a human fixes the config — deliberate (§7.1 as
+  written; skipping ahead would break the promise for an operator
+  mistake), support-ticket-shaped, and fix-triggers-resume is the latency
+  remedy (maintainer rider at Phase 8 approval)
 
 ## Rejected (kept so we don't re-litigate)
 

@@ -193,6 +193,42 @@ load-bearing so no future session "optimizes" it away.
 Process note: flag → rule → amend contract → only then code. This
 exchange is the methodology in miniature.
 
+### 2026-08-15 — phase-8: ordering (PR #11)
+
+§7 live: `orderingKey` on send(), denormalized write-once onto
+deliveries with a `seq` identity column (T1: creation order is
+SEQUENCE order — created_at ties to the microsecond for siblings born
+in one transaction, exactly the caller most likely to want ordering),
+and the whole feature is one guard clause in the claim LATERAL with a
+NULL short-circuit — unordered traffic pays one column test.
+
+The review caught the plan's safety proof leaking: T3 argued stale
+snapshots can only over-block because unblock transitions never revert
+— true for rows the guard can SEE, but READ COMMITTED cannot see an
+uncommitted elder, so a younger sibling accepted-and-committed during
+another caller's open send-transaction delivers first. Heavyweight
+fixes (snapshot fencing, commit-LSN ordering) rejected for v1; the
+maintainer's required amendment scopes the promise honestly: §7.1 now
+defines order as guaranteed only between acceptances that do not
+overlap — a message is ordered only against the history it could have
+observed. Pinned by a deterministic two-connection test.
+
+That test then earned double: holding a send-transaction open exposed a
+PRE-EXISTING stall — every INSERT into deliveries takes an FK KEY SHARE
+on its endpoint row, and the claim query's FOR UPDATE OF e conflicts
+with it, so an open caller tx blocked ALL claims on every matched
+endpoint until COMMIT. The claim never modifies the endpoint row; it
+only needs claimers to exclude EACH OTHER — downgraded to FOR NO KEY
+UPDATE (self-conflicting, FK-compatible) and the stall is gone,
+re-proven by the 10k zero-double-claims test.
+
+Also ratified: T4 replay re-enters at the BACK of its key (fresh seq —
+replaying with the original position would let a human recovery action
+retroactively violate §7.1); §7.2 gains that third loud break. T5: no
+worker knob — ordering is a property of traffic. Deliberate T3
+consequence queued for the P9 docs: a config-parked elder freezes its
+whole key until a human fixes the config.
+
 ### 2026-08-15 — phase-7: SSRF guard (PR #10)
 
 §9 live, zero new dependencies and zero schema changes. The headline is
