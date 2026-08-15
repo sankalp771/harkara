@@ -222,6 +222,23 @@ truncate-after-buffer to destroy-at-4096-DURING-read, observed from
 outside: the receiver sees its own socket die mid-write. Kicked to
 BACKLOG: registration-time vetting (needs the future endpoints API).
 
+Second bug story, same phase: the 10k throughput test failed the new
+client once — 1 duplicate attempt in 10,000. The keep-alive pool's
+stale-socket race: a pooled socket idles past the receiver's 5s
+keep-alive timeout, the server closes it, the next POST rides the
+corpse, gets ECONNRESET before any response byte, and the "network
+failure" retry writes a second attempt row. Fix is Node's own
+documented pattern with one hard-won amendment: retry exactly once when
+the socket was REUSED, the error is a reset, and zero response bytes
+arrived (the receiver provably never saw the request, so the retry
+cannot double-deliver) — and the retry must BYPASS the pool, because
+the first fix retried through it and the LIFO pool handed over the
+next corpse in the row ('connection reset on reused socket, twice', in
+the actual attempt row). A fresh socket is structurally never stale.
+Three phases running, the 10k test has now caught four different
+concurrency bugs (EvalPlanQual double-claim, tsx orphan, and both
+halves of the stale-socket story).
+
 ### 2026-08-15 — phase-6: circuit breaker (PR #9)
 
 §5.2/§5.3 live: per-endpoint three-state breaker, state shared through a

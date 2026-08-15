@@ -219,15 +219,42 @@ export async function pinnedRequest(
   if (target === undefined) {
     return { kind: 'network', message: `DNS returned no addresses for ${hostname}` };
   }
-  const isHttps = url.protocol === 'https:';
 
-  return new Promise<EgressResult>((resolve) => {
+  const first = await dialOnce(url, hostname, target, opts, true);
+  if (first !== 'staleSocket') return first;
+  // A pooled keep-alive socket died under us before ANY response byte:
+  // the receiver had already closed it (idle timeout), so it never saw
+  // the request — retrying cannot double-deliver (Node's documented
+  // reusedSocket + ECONNRESET pattern). The retry BYPASSES the pool:
+  // after a burst-then-lull the pool can hold several corpses in a row
+  // (the 10k throughput test caught a pooled retry finding the second
+  // one), and a fresh socket is structurally never stale.
+  const second = await dialOnce(url, hostname, target, opts, false);
+  return second === 'staleSocket'
+    ? { kind: 'network', message: 'connection reset on reused socket, twice' } // unreachable: fresh sockets are never reused
+    : second;
+}
+
+/**
+ * One dial. Resolves 'staleSocket' ONLY for the retryable pooled-socket
+ * corpse (reused socket, ECONNRESET, zero response bytes); everything
+ * else is a final EgressResult.
+ */
+function dialOnce(
+  url: URL,
+  hostname: string,
+  target: { address: string; family: number },
+  opts: PinnedRequestOptions,
+  useAgent: boolean,
+): Promise<EgressResult | 'staleSocket'> {
+  const isHttps = url.protocol === 'https:';
+  return new Promise((resolve) => {
     let settled = false;
     // Once the status line arrives, EVERY exit — end, cap, abort, reset —
     // finishes with that status (§9.2: the status decides). Before it,
     // errors are network failures.
     let finishResponse: (() => void) | null = null;
-    const done = (result: EgressResult) => {
+    const done = (result: EgressResult | 'staleSocket') => {
       if (!settled) {
         settled = true;
         resolve(result);
@@ -243,7 +270,11 @@ export async function pinnedRequest(
         port: url.port !== '' ? Number(url.port) : isHttps ? 443 : 80,
         path: `${url.pathname}${url.search}`,
         method: opts.method,
-        agent: isHttps ? (opts.agents?.https ?? false) : (opts.agents?.http ?? false),
+        agent: useAgent
+          ? isHttps
+            ? (opts.agents?.https ?? false)
+            : (opts.agents?.http ?? false)
+          : false,
         headers: { ...opts.headers, host: url.host },
         ...(isHttps ? { servername: hostname } : {}),
         signal: AbortSignal.timeout(opts.timeoutMs),
@@ -277,8 +308,16 @@ export async function pinnedRequest(
     req.on('error', (err) => {
       // Mid-body aborts surface here too (the time cap firing while the
       // body drips) — the status already decided if we have one.
-      if (finishResponse !== null) finishResponse();
-      else done({ kind: 'network', message: errText(err) });
+      if (finishResponse !== null) {
+        finishResponse();
+        return;
+      }
+      const code = (err as NodeJS.ErrnoException).code;
+      if (req.reusedSocket && (code === 'ECONNRESET' || code === 'EPIPE')) {
+        done('staleSocket');
+        return;
+      }
+      done({ kind: 'network', message: errText(err) });
     });
     req.end(opts.body);
   });
