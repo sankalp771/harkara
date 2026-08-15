@@ -6,7 +6,7 @@
   "author": "Sankalp Omprakash Pandey",
   "type": "module",
   "bin": {
-    "harkara": "./dist/src/cli-bin.js"
+    "harkara": "dist/src/cli-bin.js"
   },
   "exports": {
     ".": {
