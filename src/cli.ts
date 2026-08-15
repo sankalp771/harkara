@@ -26,7 +26,7 @@ const LETTERS: Record<string, string[]> = {
 export function banner(version: string): string {
   const word = ['H', 'a', 'r', 'k', 'a', 'r', 'a'];
   const art = [0, 1, 2, 3, 4]
-    .map((row) => word.map((letter) => LETTERS[letter]![row]!).join(''))
+    .map((row) => word.map((letter) => LETTERS[letter]?.[row] ?? '').join(''))
     .join('\n');
   return [
     '',
