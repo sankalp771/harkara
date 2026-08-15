@@ -1,5 +1,3 @@
-import type { MigrationBuilder } from 'node-pg-migrate';
-
 /**
  * Phase 1 — the five tables (REBUILD_PLAN.md Phase 1; SEMANTICS §1.3, §1a,
  * §2.4, §4.5, §6.1, §6.2, §8.1).
@@ -16,7 +14,8 @@ import type { MigrationBuilder } from 'node-pg-migrate';
 
 export const shorthands = undefined;
 
-export function up(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function up(pgm) {
   pgm.createTable('messages', {
     id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
     tenant_id: { type: 'text' },
@@ -111,7 +110,8 @@ export function up(pgm: MigrationBuilder): void {
   pgm.createIndex('delivery_attempts', 'delivery_id');
 }
 
-export function down(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function down(pgm) {
   pgm.dropTable('delivery_attempts');
   pgm.dropTable('deliveries');
   pgm.dropTable('endpoint_secrets');

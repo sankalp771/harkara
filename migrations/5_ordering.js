@@ -1,5 +1,3 @@
-import type { MigrationBuilder } from 'node-pg-migrate';
-
 /**
  * Phase 8 — §7 ordering (plan T1/T2).
  *
@@ -14,7 +12,8 @@ import type { MigrationBuilder } from 'node-pg-migrate';
 
 export const shorthands = undefined;
 
-export function up(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function up(pgm) {
   pgm.addColumn('messages', {
     ordering_key: { type: 'text' },
   });
@@ -32,7 +31,8 @@ export function up(pgm: MigrationBuilder): void {
   `);
 }
 
-export function down(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function down(pgm) {
   pgm.sql('DROP INDEX deliveries_ordering_guard');
   pgm.dropColumn('deliveries', 'seq');
   pgm.dropColumn('deliveries', 'ordering_key');

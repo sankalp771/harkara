@@ -46,22 +46,14 @@ never-dead with frozen schedule position; refusals × breaker ruled on
   index health, and worker liveness against the host's Postgres
 - [observability] emit delivery lifecycle events (attempt, dead, breaker
   state change) via an EventEmitter so hosts can wire their own metrics
-- [docs] serverless caveat — the worker loop assumes a long-lived process;
-  document that Lambda-style hosts need a pinned worker or scheduled runner
-- [docs] the probe-martyr pattern gets a NAMED paragraph in the Phase 9
-  breaker docs — during a long outage one delivery absorbs the half-open
-  probes and may die into the DLQ so the rest keep their budget (§5.3/T3);
-  maintainer directive at Phase 6 approval
-- [docs] the §9 docs must say 169.254.169.254 is blocked as a LINK-LOCAL
-  RANGE member, never as a special-cased address — so the range check
-  can't be "optimized" into an IP list (maintainer rider at Phase 7
-  approval; the pure test pins a range neighbor for the same reason)
-- [docs] the ordering docs need a named paragraph next to the
-  probe-martyr: a config-parked elder (§3.2 never-dead) freezes its whole
-  ordering key until a human fixes the config — deliberate (§7.1 as
-  written; skipping ahead would break the promise for an operator
-  mistake), support-ticket-shaped, and fix-triggers-resume is the latency
-  remedy (maintainer rider at Phase 8 approval)
+- [endpoints-api] a registration API (create endpoint + secret in one
+  call, vetting URLs per §9.1 at registration time) — v1 quickstart
+  documents the two INSERTs instead
+
+(the four docs riders — probe-martyr, metadata-as-range, config-parked
+elder, serverless caveat — discharged 2026-08-16 into
+docs/guides/operations.md; the §2.3 dedup example landed TESTED in
+docs/guides/receivers.md + test/receiver-dedup.integration.test.ts)
 
 ## Rejected (kept so we don't re-litigate)
 

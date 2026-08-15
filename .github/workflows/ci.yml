@@ -10,10 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      # Test the floor, not just the ceiling. SEMANTICS §11: all non-EOL
-      # PostgreSQL versions — bump 15 out when it EOLs, per postgresql.org.
+      # Test the floors, not just the ceilings (maintainer ruling: no
+      # silent platform floors — CI tests the documented minimum).
+      # SEMANTICS §11: all non-EOL PostgreSQL majors — bump 15 out when
+      # it EOLs. package.json engines: node >=20 — same policy.
       matrix:
         postgres: [15, 17]
+        node: [20, 22]
 
     services:
       postgres:
@@ -38,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install
@@ -53,8 +56,19 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build (the package must compile as shipped)
+        run: npm run build
+
+      - name: Docs freshness (docs/contract is GENERATED from SEMANTICS.md)
+        run: |
+          npm run docs
+          git diff --exit-code docs/contract
+
       - name: Migrate (against real Postgres)
         run: npm run migrate:up
 
       - name: Test (against real Postgres)
         run: npm test
+
+      - name: Smoke the tarball (pack → install → deliver one webhook)
+        run: node scripts/smoke-pack.mjs

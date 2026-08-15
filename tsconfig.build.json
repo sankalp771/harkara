@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    // Migrations are plain ESM .js (JSDoc-typed) so every supported Node
+    // loads them natively — allowJs carries them into dist unchanged.
+    "allowJs": true,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts", "migrations/**/*.js"]
+}

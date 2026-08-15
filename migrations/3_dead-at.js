@@ -1,5 +1,3 @@
-import type { MigrationBuilder } from 'node-pg-migrate';
-
 /**
  * Phase 5 — the DLQ learns when things died, and refusal rows drop the
  * NOT NULL on attempt_number.
@@ -15,7 +13,8 @@ import type { MigrationBuilder } from 'node-pg-migrate';
 
 export const shorthands = undefined;
 
-export function up(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function up(pgm) {
   pgm.sql(`ALTER TABLE deliveries ADD COLUMN dead_at TIMESTAMPTZ`);
   pgm.sql(`
     CREATE INDEX deliveries_dead_by_endpoint
@@ -30,7 +29,8 @@ export function up(pgm: MigrationBuilder): void {
   pgm.sql(`ALTER TABLE delivery_attempts ALTER COLUMN attempt_number DROP NOT NULL`);
 }
 
-export function down(pgm: MigrationBuilder): void {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+export function down(pgm) {
   pgm.sql(`ALTER TABLE delivery_attempts ALTER COLUMN attempt_number SET NOT NULL`);
   pgm.sql(`DROP INDEX deliveries_dead_by_time`);
   pgm.sql(`DROP INDEX deliveries_dead_by_endpoint`);
