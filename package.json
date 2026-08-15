@@ -1,32 +1,66 @@
 {
   "name": "harkara",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Embeddable webhook delivery for Node/TypeScript apps using their existing Postgres. The Sidekiq of webhooks.",
   "license": "MIT",
+  "author": "Sankalp Omprakash Pandey",
   "type": "module",
-  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "SEMANTICS.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sankalp771/harkara.git"
+  },
+  "homepage": "https://github.com/sankalp771/harkara#readme",
+  "bugs": {
+    "url": "https://github.com/sankalp771/harkara/issues"
+  },
+  "keywords": [
+    "webhooks",
+    "webhook-delivery",
+    "postgres",
+    "postgresql",
+    "transactional-outbox",
+    "outbox",
+    "standard-webhooks",
+    "dead-letter-queue",
+    "circuit-breaker"
+  ],
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "migrate:up": "node-pg-migrate up",
-    "migrate:down": "node-pg-migrate down",
+    "docs": "node scripts/build-docs.mjs",
+    "migrate:up": "node-pg-migrate up --migrations-table harkara_migrations",
+    "migrate:down": "node-pg-migrate down --migrations-table harkara_migrations",
     "test": "vitest run"
   },
   "dependencies": {
-    "node-pg-migrate": "^7.9.0",
-    "pg": "^8.13.0"
+    "node-pg-migrate": "^7.9.0"
+  },
+  "peerDependencies": {
+    "pg": "^8.11.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^10.13.0",
     "@types/node": "^22.7.0",
     "@types/pg": "^8.11.0",
     "eslint": "^9.12.0",
+    "pg": "^8.13.0",
     "prettier": "^3.3.0",
     "standardwebhooks": "^1.0.0",
     "ts-node": "^10.9.2",

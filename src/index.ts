@@ -6,6 +6,7 @@
  * (CLAUDE.md: surface changes are stop-and-ask).
  */
 export { createHarkara, type Harkara, type HarkaraOptions } from './harkara.js';
+export { runMigrations, type RunMigrationsOptions } from './migrate.js';
 export type { SendEvent, SendOptions, SendResult } from './send.js';
 export type { HarkaraWorker, WorkerOptions } from './worker.js';
 export type { BreakerConfig } from './breaker.js';
