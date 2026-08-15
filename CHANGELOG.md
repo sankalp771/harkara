@@ -43,6 +43,8 @@ phase with tests written from SEMANTICS.md clauses before code.
 - **`runMigrations()`** — hosts apply harkara's schema through one
   call, recorded in harkara's own `harkara_migrations` ledger (never
   node-pg-migrate's default table).
+- **`harkara` CLI** — `npx harkara migrate` (same door, terminal-shaped),
+  `version`, and a banner; delivery itself stays library-shaped.
 - **Docs** — generated per-section contract pages (CI-enforced fresh),
   quickstart, tested receiver dedup snippet, operations guide
   (probe-martyr, config-parked elders), honest comparison.

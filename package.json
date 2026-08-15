@@ -5,6 +5,9 @@
   "license": "MIT",
   "author": "Sankalp Omprakash Pandey",
   "type": "module",
+  "bin": {
+    "harkara": "./dist/src/cli-bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

@@ -28,6 +28,13 @@ Safe to call on every boot — an up-to-date database applies nothing.
 Harkara records its migrations in its own `harkara_migrations` table,
 so it never interferes with your app's own migration history.
 
+The same door exists as a CLI (`DATABASE_URL` env or
+`--database-url=`):
+
+```bash
+npx harkara migrate
+```
+
 ## 3. Register an endpoint
 
 v1 has no registration API yet (it's on the roadmap); endpoints are
